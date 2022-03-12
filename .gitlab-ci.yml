@@ -19,7 +19,7 @@ unit-test:
   stage: test
 
   before_script:
-    - pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements_dev.txt
+    - pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
   script:
     - python manage.py makemigrations
     - python manage.py migrate
