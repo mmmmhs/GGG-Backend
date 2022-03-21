@@ -20,6 +20,7 @@ unit-test:
 
   before_script:
     - pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+    - mkdir  django_storage
   script:
     - python manage.py makemigrations
     - python manage.py migrate
