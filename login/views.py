@@ -7,7 +7,7 @@ from django.shortcuts import render
 # Create your views here.
 from django.http import HttpResponse, JsonResponse
 import requests
-from helloworld.models import Driver, Passenger, SessionId
+from login.models import Driver, Passenger, SessionId
 import secoder.settings
 from cryptography.fernet import Fernet
 

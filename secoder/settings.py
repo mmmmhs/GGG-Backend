@@ -10,9 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
-from msilib.schema import AppId
 from pathlib import Path
-from helloworld.update import daily_update
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,7 +34,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
-    'django.crontab'
+    'login.apps.LoginConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -76,7 +74,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'secoder.wsgi.application'
 
-CRONJOBS = [('* * */1 * *','helloworld.update.daily_update', )]
+CRONJOBS = [('* * */1 * *','login.update.daily_update', )]
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
