@@ -25,3 +25,4 @@ xunit-reports/
 .history
 django_storage
 migrations/
+.vs
