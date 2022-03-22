@@ -42,7 +42,6 @@ def login(request):
             return JsonResponse({'errorcode':errorcode,'sess':sessionID})
         except Exception:
             return HttpResponse("Invalid", status=405)
-    return 
 
 def reg(request):
     if(request.method =='GET'):
