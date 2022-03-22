@@ -22,3 +22,6 @@ xunit-reports/
 .idea
 .vscode
 *.sqlite3
+.history
+django_storage
+migrations/

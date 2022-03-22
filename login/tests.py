@@ -9,7 +9,6 @@ class helloworld_test(TestCase):
 		SessionId.objects.create(Id = "510", username = "azi", job = "Driver")
 	def test_login(self):
 		pass
-		# 暂时无法测试：需要合法code以匹配相应结果
 	def test_reg_passenger(self):	
 		response = self.client.get("/api/reg", {'sess' : "773"})
 		try:
