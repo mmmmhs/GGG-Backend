@@ -10,17 +10,22 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
+from msilib.schema import AppId
 from pathlib import Path
+from helloworld.update import daily_update
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+APPID = "wx7dad48f5b0c6cfaf"
 
+APPSECRET = "ab4fbc2ecaaf6b8906ad20215e9085ff"
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-#rk4h^d7)d(dvyfmc5^5ebq*la^e$$5%mb1=aia^&i#vlswfjf'
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -31,12 +36,14 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'django.crontab'
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
 ]
 
 MIDDLEWARE = [
@@ -69,7 +76,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'secoder.wsgi.application'
 
-
+CRONJOBS = [('* * */1 * *','helloworld.update.daily_update', )]
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
@@ -103,9 +110,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'zh-hans'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Shanghai'
 
 USE_I18N = True
 
