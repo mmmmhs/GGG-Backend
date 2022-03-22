@@ -9,7 +9,7 @@ class helloworld_test(TestCase):
 		SessionId.objects.create(Id = "510", username = "azi", job = "Driver")
 	def test_login(self):
 		pass
-		# ÔİÊ±ÎŞ·¨²âÊÔ£ºĞèÒªºÏ·¨codeÒÔÆ¥ÅäÏàÓ¦½á¹û
+		# æš‚æ—¶æ— æ³•æµ‹è¯•ï¼šéœ€è¦åˆæ³•codeä»¥åŒ¹é…ç›¸åº”ç»“æœ
 	def test_reg_passenger(self):	
 		response = self.client.get("/api/reg", {'sess' : "773"})
 		try:
