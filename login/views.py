@@ -1,4 +1,3 @@
-
 from ast import Return
 from email.policy import default
 from logging import exception
@@ -18,7 +17,7 @@ def get_3rd_session(session_key, openId, job):
     key = Fernet.generate_key()
     cipher = Fernet(key)
     encrypted_data = cipher.encrypt(session_key.encode('utf-8'))
-    SessionId.objects.create(Id = encrypted_data, key = key, username = openId, job = job)
+    SessionId.objects.create(sessId = encrypted_data, key = key, username = openId, job = job)
     return encrypted_data
 
 def login(request):
@@ -40,14 +39,14 @@ def login(request):
                 if not user and errorcode == 0:
                     errorcode = -10
             return JsonResponse({'errorcode':errorcode,'sess':sessionID})
-        except Exception:
-            return HttpResponse("Invalid", status=405)
+        except Exception as e:
+            return HttpResponse("error:{}".format(e), status=405)
 
 def reg(request):
     if(request.method =='GET'):
         try:
             sess = request.GET.get('sess',default = '')
-            user = SessionId.objects.filter(Id = sess).first()
+            user = SessionId.objects.filter(sessId = sess).first()
             if(user.job == "passenger"):
                 Passenger.objects.create(name = user.username)
             elif(user.job == "driver"):

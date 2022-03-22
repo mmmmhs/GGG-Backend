@@ -34,6 +34,9 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+	# 'django_crontab' 
+	# 仅在linux系统上可运行
+	# $ python manage.py crontab add
     'login.apps.LoginConfig',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -74,7 +77,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'secoder.wsgi.application'
 
-CRONJOBS = [('* * */1 * *','login.update.daily_update', )]
+# from login.update import daily_update
+CRONJOBS = [('* * */1 * *','login.update.daily_update')]
+
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
