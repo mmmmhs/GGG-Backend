@@ -16,13 +16,10 @@ import hashlib
 def index(request):
     return HttpResponse("Hello world.")
 
-class wx_response:
-	def get_wx_response(self, code):
-		response = requests.get("https://api.weixin.qq.com/sns/jscode2session?appid="+secoder.settings.APPID +
-								"&secret="+secoder.settings.APPSECRET+"&js_code="+code+"&grant_type=authorization_code")
-		return response.json()
-	def __init__(self):
-		pass	
+
+def get_wx_response(self, code):
+    response = requests.get("https://api.weixin.qq.com/sns/jscode2session?appid="+secoder.settings.APPID +"&secret="+secoder.settings.APPSECRET+"&js_code="+code+"&grant_type=authorization_code")
+    return response.json()
 
 
 def get_3rd_session(session_key, openId, job):
@@ -37,7 +34,7 @@ def login(request):
     if(request.method == 'GET'):
         code = request.GET.get('code', default='')
         job = request.GET.get('job', default='')
-        data = wx_response.get_wx_response(code)
+        data = get_wx_response(code)
         try:
             openID = data['openid']
             sessionID = get_3rd_session(data['session_key'], openID, job)
@@ -55,7 +52,9 @@ def login(request):
                 errorcode = -10
             SessionId.objects.update_or_create(username=openID, defaults={
                                                "sessId": "sessionID", "job": "job"})
-            return JsonResponse({'errcode': errorcode, 'sess': sessionID})
+            res =  JsonResponse({'errcode': errorcode, 'sess': sessionID})
+            res.headers['Content-Type'] = 'application/json'
+            return res
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
 
