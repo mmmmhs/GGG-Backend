@@ -1,6 +1,7 @@
 from ast import Return
 from email.policy import default
 from logging import exception
+from re import U
 from django.forms import ValidationError
 from django.shortcuts import render
 # Create your views here.
@@ -50,6 +51,8 @@ def login(request):
                 user = Passenger.objects.filter(name=openID).first()
             elif job == 'driver':
                 user = Driver.objects.filter(name=openID).first()
+            else:
+                user = 0
             if not user:
                 errorcode = -10
             SessionId.objects.update_or_create(username=openID, defaults={
