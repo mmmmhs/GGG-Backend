@@ -17,8 +17,9 @@ def index(request):
     return HttpResponse("Hello world.")
 
 
-def get_wx_response(self, code):
-    response = requests.get("https://api.weixin.qq.com/sns/jscode2session?appid="+secoder.settings.APPID +"&secret="+secoder.settings.APPSECRET+"&js_code="+code+"&grant_type=authorization_code")
+def get_wx_response(code):
+    response = requests.get("https://api.weixin.qq.com/sns/jscode2session?appid="+secoder.settings.APPID +
+                            "&secret="+secoder.settings.APPSECRET+"&js_code="+code+"&grant_type=authorization_code")
     return response.json()
 
 
@@ -38,6 +39,7 @@ def login(request):
         try:
             openID = data['openid']
             sessionID = get_3rd_session(data['session_key'], openID, job)
+            print(openID, sessionID)
             try:
                 errorcode = data['errcode']
             except Exception:
@@ -52,8 +54,8 @@ def login(request):
                 errorcode = -10
             SessionId.objects.update_or_create(username=openID, defaults={
                                                "sessId": "sessionID", "job": "job"})
-            res =  JsonResponse({'errcode': errorcode, 'sess': sessionID})
-            res.headers['Content-Type'] = 'application/json'
+            res = JsonResponse({'errcode': errorcode, 'sess': sessionID})
+            # res.headers['Content-Type'] = 'application/json'
             return res
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
