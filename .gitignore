@@ -24,5 +24,4 @@ xunit-reports/
 *.sqlite3
 .history
 django_storage
-migrations/
 .vs
