@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-#rk4h^d7)d(dvyfmc5^5ebq*la^e$$5%mb1=aia^&i#vlswfjf
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -77,7 +77,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'secoder.wsgi.application'
 
-# from login.update import daily_update
 CRONJOBS = [('* * */1 * *','login.update.daily_update')]
 
 # Database
