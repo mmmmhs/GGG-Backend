@@ -12,8 +12,8 @@ import secoder.settings
 import random
 import string
 import hashlib
-
-
+import logging
+logger = logging.getLogger('django')
 def index(request):
     return HttpResponse("Hello world.")
 
@@ -56,7 +56,7 @@ def login(request):
             if not user:
                 errorcode = -10
             SessionId.objects.update_or_create(username=openID, defaults={
-                                               "sessId": "sessionID", "job": "job"})
+                                               "sessId": sessionID, "job": job})
             res = JsonResponse({'errcode': errorcode, 'sess': sessionID})
             # res.headers['Content-Type'] = 'application/json'
             return res
@@ -75,5 +75,5 @@ def reg(request):
                 Driver.objects.create(name=user.username)
             return JsonResponse({'errcode': 1})
         except Exception as e:
-            print(e)
+            logger.warning(e)
             return JsonResponse({'errcode': -2})
