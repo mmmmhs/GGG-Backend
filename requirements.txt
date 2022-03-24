@@ -5,3 +5,4 @@ pytest-django==4.5.2
 coverage==6.3.2
 pytest==7.0.1
 django-crontab==0.7.1
+daphne==3.0.2

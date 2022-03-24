@@ -10,4 +10,5 @@ COPY . /opt/secoder/
 
 EXPOSE 80
 
+ENV PYTHONUNBUFFERED=true
 CMD ["/bin/sh", "/opt/secoder/script/start.sh"]
