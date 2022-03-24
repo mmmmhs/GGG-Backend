@@ -1,5 +1,6 @@
 from ast import Return
 from email.policy import default
+import json
 from logging import exception
 from re import U
 from django.forms import ValidationError
@@ -14,6 +15,8 @@ import string
 import hashlib
 import logging
 logger = logging.getLogger('django')
+
+
 def index(request):
     return HttpResponse("Hello world.")
 
@@ -33,9 +36,13 @@ def get_3rd_session(session_key, openId, job):
 
 
 def login(request):
-    if(request.method == 'GET'):
-        code = request.GET.get('code', default='')
-        job = request.GET.get('job', default='')
+    if(request.method == 'POST'):
+        try:
+            reqjson = json.loads(request.body)
+            code = reqjson['code']
+            job = reqjson['job']
+        except Exception as e:
+            return HttpResponse("error:{}".format(e), status=405)
         data = get_wx_response(code)
         try:
             openID = data['openid']
@@ -65,9 +72,13 @@ def login(request):
 
 
 def reg(request):
-    if(request.method == 'GET'):
+    if(request.method == 'POST'):
         try:
-            sess = request.GET.get('sess', default='')
+            reqjson = json.loads(request.body)
+            sess = reqjson['sess']
+        except Exception as e:
+            return HttpResponse("error:{}".format(e), status=405)
+        try:
             user = SessionId.objects.filter(sessId=sess).first()
             if(user.job == "passenger"):
                 Passenger.objects.create(name=user.username)

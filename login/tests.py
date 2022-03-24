@@ -33,8 +33,9 @@ class login_test(TestCase):
 
         sess_id = get_3rd_session(
             'Jiaranjintianchishenme', 'Diana', 'passenger')
-        response = self.client.get(
-            "/api/login", {'code': "ranran", "job": 'passenger'})
+        response = self.client.post(
+            "/api/login", data={'code': "ranran", "job": 'passenger'}, content_type="application/json")
+        print(response)
         errcode = response.json()['errcode']
         sess = response.json()['sess']
         self.assertEqual(errcode, 0)
@@ -50,15 +51,15 @@ class login_test(TestCase):
 
         sess_id = get_3rd_session(
             'Yongganniuniubupakunnan', 'Bella', 'driver')
-        response = self.client.get(
-            "/api/login", {'code': "beilala", "job": 'driver'})
+        response = self.client.post(
+            "/api/login", data={'code': "beilala", "job": 'driver'}, content_type="application/json")
         errcode = response.json()['errcode']
         sess = response.json()['sess']
         self.assertEqual(errcode, 0)
         # self.assertEqual(sess, sess_id)
 
     def test_reg_passenger(self):
-        response = self.client.get("/api/reg", {'sess': "773"})
+        response = self.client.post("/api/reg", data={'sess': "773"}, content_type="application/json")
         try:
             code = response.json()['errcode']
             self.assertEqual(code, 1)
@@ -66,7 +67,7 @@ class login_test(TestCase):
             print("error:{}".format(e))
 
     def test_reg_driver(self):
-        response = self.client.get("/api/reg", {'sess': "510"})
+        response = self.client.post("/api/reg", data={'sess': "510"}, content_type="application/json")
         try:
             code = response.json()['errcode']
             self.assertEqual(code, 1)
