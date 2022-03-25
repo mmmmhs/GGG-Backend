@@ -65,7 +65,6 @@ def login(request):
             SessionId.objects.update_or_create(username=openID, defaults={
                                                "sessId": sessionID, "job": job})
             res = JsonResponse({'errcode': errorcode, 'sess': sessionID})
-            # res.headers['Content-Type'] = 'application/json'
             return res
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
