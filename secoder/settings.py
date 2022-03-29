@@ -37,7 +37,7 @@ INSTALLED_APPS = [
 	# 'django_crontab'
 	# 仅在linux系统上可运行
 	# $ python manage.py crontab add
-    'login.apps.LoginConfig',
+    'GGG_backend.apps.GGG_backendConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

@@ -1,5 +1,5 @@
 import datetime
-from login.models import SessionId
+from GGG_backend.models import SessionId
 
 def daily_update():
     SessionId.objects.all().delete()

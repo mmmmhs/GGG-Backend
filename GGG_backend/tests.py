@@ -1,11 +1,11 @@
 from distutils.log import error
 from urllib import response
 from django.test import TestCase
-from login.models import Driver, Passenger, SessionId
-import login.views
+from GGG_backend.models import Driver, Passenger, SessionId
+import GGG_backend.views
 from unittest import mock
 from unittest.mock import patch
-from login.views import get_3rd_session
+from GGG_backend.views import get_3rd_session
 
 class login_test(TestCase):
     def setUp(self):
@@ -15,7 +15,7 @@ class login_test(TestCase):
         Passenger.objects.create(name='Diana')
         Driver.objects.create(name="Bella")
 
-    @patch("login.views.get_wx_response")
+    @patch("GGG_backend.views.get_wx_response")
     def test_login_passenger(self, mock_get_wx_response):
         data = {
             'openid': 'Diana',
@@ -33,7 +33,7 @@ class login_test(TestCase):
         self.assertEqual(errcode, 0)
         # self.assertEqual(sess, sess_id)
 
-    @patch("login.views.get_wx_response")
+    @patch("GGG_backend.views.get_wx_response")
     def test_login_driver(self, mock_get_wx_response):
         data = {
             'openid': 'Bella',

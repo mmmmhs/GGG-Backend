@@ -3,12 +3,13 @@ from email.policy import default
 import json
 from logging import exception
 from re import U
+from urllib import request
 from django.forms import ValidationError
 from django.shortcuts import render
 # Create your views here.
 from django.http import HttpResponse, JsonResponse
 import requests
-from login.models import Driver, Passenger, SessionId
+from GGG_backend.models import Driver, Passenger, SessionId
 import secoder.settings
 import random
 import string
@@ -64,7 +65,8 @@ def login(request):
                 errorcode = -10
             SessionId.objects.update_or_create(username=openID, defaults={
                                                "sessId": sessionID, "job": job})
-            res = JsonResponse({'errcode': errorcode, 'sess': sessionID})
+            orderid = user.order_id
+            res = JsonResponse({'errcode': errorcode, 'sess': sessionID, 'order': orderid})
             return res
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
@@ -87,3 +89,13 @@ def reg(request):
         except Exception as e:
             logger.warning(e)
             return JsonResponse({'errcode': -2})
+
+def pois(request):
+    if(request.method == 'GET'):
+        try:
+            sess = request.GET.get('sess')
+            if not SessionId.objects.filter(sessId=sess).first():
+                return JsonResponse({'errcode': -2, 'pois': []})
+
+        except Exception as e:
+            return HttpResponse("error:{}".format(e), status=405)			

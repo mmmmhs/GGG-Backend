@@ -5,15 +5,18 @@ from django.db import models
 
 # Create your models here.
 
+
 class Passenger(models.Model):
     name = models.CharField(unique=True, max_length=500)
     status = models.CharField(max_length=100, default='0', blank=True)
+    order_id = models.BigIntegerField(default=-1, blank=True)
     position = models.IntegerField(default=0, blank=True)
-    
+
 
 class Driver(models.Model):
     name = models.CharField(unique=True, max_length=500)
     status = models.CharField(max_length=100, default='0', blank=True)
+    order_id = models.BigIntegerField(default=-1, blank=True)
     position = models.IntegerField(default=0, blank=True)
 
 
@@ -31,6 +34,6 @@ class Order(models.Model):
     destination = models.IntegerField(default=0, blank=True)
     status = models.CharField(max_length=10, default='0', blank=True)
 
-class Position(models.Model):
-	X_axis = models.FloatField(default=0, blank=True)
-	Y_axis = models.FloatField(default=0, blank=True)
+class Poi(models.Model):
+	lat = models.FloatField(default=0, blank=True)
+	lon = models.FloatField(default=0, blank=True)
