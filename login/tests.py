@@ -7,14 +7,6 @@ from unittest import mock
 from unittest.mock import patch
 from login.views import get_3rd_session
 
-
-# class mockreq:
-#     def json():
-#         return {'openid': 'nana7mi',
-#                 'session_key': 'tieguizongdeichuangsiyigeren'
-#                 }
-
-
 class login_test(TestCase):
     def setUp(self):
         SessionId.objects.create(
