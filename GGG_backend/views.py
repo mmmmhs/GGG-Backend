@@ -3,7 +3,6 @@ from email.policy import default
 import json
 from logging import exception
 from re import U
-from urllib import request
 from django.forms import ValidationError
 from django.shortcuts import render
 # Create your views here.
@@ -98,4 +97,24 @@ def pois(request):
                 return JsonResponse({'errcode': -2, 'pois': []})
 
         except Exception as e:
-            return HttpResponse("error:{}".format(e), status=405)			
+            return HttpResponse("error:{}".format(e), status=405)	
+
+def preorder(request):
+    if (request.method == 'POST'): # POST方法，对应的是司机准备接单的环节
+        try: 
+            reqjson = json.loads(request.body)
+            sessionId = reqjson['sess']
+            origin = reqjson['origin']
+        except Exception as e:
+            return HttpResponse("error:{}".format(e), status=405)
+        user = SessionId.objects.filter(sessId=sessionId).first() # 找到对应user
+        errcode = 0
+        if not user or user.job == 'passenger': # 不能为空，不能为乘客
+            errcode = -10
+            return JsonResponse({'errcode' : errcode})
+        if user.status != 0: # 0代表没有订单
+            errcode = -1
+            driver = Driver.objects.filter(name = user.username).first() # 找到对应的司机
+            driver.position = int(origin)
+        return JsonResponse({'errcode' : errcode})
+    # if (request.method == 'GET'):
