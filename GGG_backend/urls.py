@@ -6,5 +6,6 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('login', views.login, name = 'login'),
     path('reg', views.reg,name = 'reg'),
-	path('pois', views.pois, name = 'pois')
+	path('pois', views.pois, name = 'pois'),
+    path('preoder', views.preorder, name='preorder')
 ]
