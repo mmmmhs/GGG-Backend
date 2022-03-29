@@ -8,7 +8,7 @@ from django.shortcuts import render
 # Create your views here.
 from django.http import HttpResponse, JsonResponse
 import requests
-from GGG_backend.models import Driver, Passenger, SessionId
+from GGG_backend.models import Driver, Passenger, SessionId, Order, Poi
 import secoder.settings
 import random
 import string
@@ -98,6 +98,43 @@ def pois(request):
 
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)	
+
+def order(request):
+    if (request.method == 'POST'):
+        try:
+            reqjson = json.loads(request.body)
+            sessionId = reqjson['sess']
+            origin = reqjson['origin']
+            dest = reqjson['dest']
+        except Exception as e:
+            return HttpResponse("error:{}".format(e),status=405)
+        user = SessionId.objects.filter(sessId=sessionId).first()
+        errcode = 0
+        if not user or user.status != 1 or user.job == 'driver':
+            errcode = -1
+            return JsonResponse({'errcode':errcode})
+        user.status = 1
+        order = Order.objects.create(passenger=user,departure = origin,destination_lat=dest.latitude,destination_lon=dest.longtitude)
+        order_id=order.id()
+        return JsonResponse({'errcode':errcode,'order':order_id})
+    elif(request.method == 'GET'):
+        try:
+            reqjson = json.loads(request.body)
+            sessionId = reqjson['sess']
+            order_id = reqjson['order']
+        except Exception as e:
+            return HttpResponse("error:{}".format(e),status=405)
+        user = SessionId.objects.filter(sessId=sessionId).first()
+        order = Order.objects.filter(passenger=user).first()
+        errcode = -1
+        if not user or order.status == 0 or user.status == 0:
+            return JsonResponse({'errcode':errcode})
+        driver = Driver.objects.filter(name=order.driver).first()
+        errcode = 0
+        poi = Poi.objects.filter(id=order.departure) ##??此处id需测试
+        response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY+'&origin="'+poi.lon+','+poi.lat+'"&destination="'+order.destination_lon+','+order.destination_lat+'"')
+        route = response['route']
+        return JsonResponse({'errcode':errcode,'info':driver,'path':route})
 
 def preorder(request):
     if (request.method == 'POST'): # POST方法，对应的是司机准备接单的环节
