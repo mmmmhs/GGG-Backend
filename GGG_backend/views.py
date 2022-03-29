@@ -108,12 +108,12 @@ def preorder(request):
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
         user = SessionId.objects.filter(sessId=sessionId).first() # 找到对应user
-        errcode = 0
+        errcode = -1
         if not user or user.job == 'passenger': # 不能为空，不能为乘客
             errcode = -10
             return JsonResponse({'errcode' : errcode})
-        if user.status != 0: # 0代表没有订单
-            errcode = -1
+        if user.status == 0: # 0代表没有订单
+            errcode = 0
             driver = Driver.objects.filter(name = user.username).first() # 找到对应的司机
             driver.position = int(origin)
         return JsonResponse({'errcode' : errcode})
