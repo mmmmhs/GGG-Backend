@@ -1,11 +1,12 @@
 from distutils.log import error
 from urllib import response
 from django.test import TestCase
-from GGG_backend.models import Driver, Passenger, SessionId
+from GGG_backend.models import Driver, Order, Passenger, SessionId
 import GGG_backend.views
 from unittest import mock
 from unittest.mock import patch
 from GGG_backend.views import get_3rd_session
+
 
 class login_test(TestCase):
     def setUp(self):
@@ -30,7 +31,9 @@ class login_test(TestCase):
         print(response)
         errcode = response.json()['errcode']
         sess = response.json()['sess']
+        order = response.json()['order']
         self.assertEqual(errcode, 0)
+        self.assertEqual(order, -1)
         # self.assertEqual(sess, sess_id)
 
     @patch("GGG_backend.views.get_wx_response")
@@ -47,11 +50,14 @@ class login_test(TestCase):
             "/api/login", data={'code': "beilala", "job": 'driver'}, content_type="application/json")
         errcode = response.json()['errcode']
         sess = response.json()['sess']
+        order = response.json()['order']
         self.assertEqual(errcode, 0)
+        self.assertEqual(order, -1)
         # self.assertEqual(sess, sess_id)
 
     def test_reg_passenger(self):
-        response = self.client.post("/api/reg", data={'sess': "773"}, content_type="application/json")
+        response = self.client.post(
+            "/api/reg", data={'sess': "773"}, content_type="application/json")
         try:
             code = response.json()['errcode']
             self.assertEqual(code, 1)
@@ -59,7 +65,8 @@ class login_test(TestCase):
             print("error:{}".format(e))
 
     def test_reg_driver(self):
-        response = self.client.post("/api/reg", data={'sess': "510"}, content_type="application/json")
+        response = self.client.post(
+            "/api/reg", data={'sess': "510"}, content_type="application/json")
         try:
             code = response.json()['errcode']
             self.assertEqual(code, 1)

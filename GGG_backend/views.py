@@ -65,7 +65,8 @@ def login(request):
             SessionId.objects.update_or_create(username=openID, defaults={
                                                "sessId": sessionID, "job": job})
             orderid = user.order_id
-            res = JsonResponse({'errcode': errorcode, 'sess': sessionID, 'order': orderid})
+            res = JsonResponse(
+                {'errcode': errorcode, 'sess': sessionID, 'order': orderid})
             return res
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
@@ -89,13 +90,15 @@ def reg(request):
             logger.warning(e)
             return JsonResponse({'errcode': -2})
 
+
 def pois(request):
     if(request.method == 'GET'):
         try:
             sess = request.GET.get('sess')
             if not SessionId.objects.filter(sessId=sess).first():
                 return JsonResponse({'errcode': -2, 'pois': []})
-
+            else:
+                pass
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)	
 
