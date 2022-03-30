@@ -17,6 +17,8 @@ import string
 import hashlib
 import logging
 logger = logging.getLogger('django')
+passenger_for_order = []  # 待匹配乘客池子
+driver_for_order = []  # 待匹配司机池子
 
 
 def index(request):
@@ -109,6 +111,14 @@ def pois(request):
             return HttpResponse("error:{}".format(e), status=405)
 
 
+def match_from_passenger(sess, dest_lat, dest_lon):
+	if len(driver_for_order) > 0:
+		openid = SessionId.objects.filter(sessId=sess).first()
+		passenger = Passenger.objects.get(name=openid)
+		Order.objects.create(
+			passenger=passenger, driver=driver_for_order[0], departure=passenger.position, dest_lat=dest_lat, dest_lon=dest_lon, match_time=time.time(), )
+
+
 def order(request):
     if (request.method == 'POST'):
         try:
@@ -117,34 +127,37 @@ def order(request):
             origin = reqjson['origin']
             dest = reqjson['dest']
         except Exception as e:
-            return HttpResponse("error:{}".format(e),status=405)
+            return HttpResponse("error:{}".format(e), status=405)
         user = SessionId.objects.filter(sessId=sessionId).first()
         errcode = 0
         if not user or user.status != 1 or user.job == 'driver':
             errcode = -1
-            return JsonResponse({'errcode':errcode})
+            return JsonResponse({'errcode': errcode})
         user.status = 1
-        order = Order.objects.create(passenger=user,departure = origin,destination_lat=dest.latitude,destination_lon=dest.longtitude)
-        order_id=order.id()
-        return JsonResponse({'errcode':errcode,'order':order_id})
+        order = Order.objects.create(passenger=user, departure=origin,
+                                     destination_lat=dest.latitude, destination_lon=dest.longtitude)
+        order_id = order.id()
+        return JsonResponse({'errcode': errcode, 'order': order_id})
     elif(request.method == 'GET'):
         try:
             reqjson = json.loads(request.body)
             sessionId = reqjson['sess']
             order_id = reqjson['order']
         except Exception as e:
-            return HttpResponse("error:{}".format(e),status=405)
+            return HttpResponse("error:{}".format(e), status=405)
         user = SessionId.objects.filter(sessId=sessionId).first()
         order = Order.objects.filter(passenger=user).first()
         errcode = -1
         if not user or order.status == 0 or user.status == 0:
-            return JsonResponse({'errcode':errcode})
+            return JsonResponse({'errcode': errcode})
         driver = Driver.objects.filter(name=order.driver).first()
         errcode = 0
-        poi = Poi.objects.filter(id=order.departure) ##??此处id需测试
-        response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY+'&origin="'+poi.lon+','+poi.lat+'"&destination="'+order.destination_lon+','+order.destination_lat+'"')
+        poi = Poi.objects.filter(id=order.departure)  # ??此处id需测试
+        response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
+                                '&origin="'+poi.lon+','+poi.lat+'"&destination="'+order.destination_lon+','+order.destination_lat+'"')
         route = response['route']
-        return JsonResponse({'errcode':errcode,'info':driver,'path':route})
+        return JsonResponse({'errcode': errcode, 'info': driver, 'path': route})
+
 
 def preorder(request):
     if (request.method == 'POST'):  # POST方法，对应的是司机准备接单的环节
@@ -202,7 +215,7 @@ def getorder(request):
             end_time = time.time()
             if end_time - begin_time > 5:
                 errcode = -1
-				# 取消当前司机状态，与下一司机匹配
+                # 取消当前司机状态，与下一司机匹配
             info = order.passenger.name[0:5]
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
