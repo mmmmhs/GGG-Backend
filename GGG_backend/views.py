@@ -177,14 +177,14 @@ def preorder(request):
         if not user or user.job == 'passenger': # 不能为空，不能为乘客
             errcode = -10
             return JsonResponse({'errcode': errcode})
+        # 这里将来用来做司乘匹配
         if user.status != 1:
             errcode = 0
-            order = Order.objects.filter(driver=user.username).first()
-            orderid = order.id
             driver = Driver.objects.filter(name=user.username).first()
-            driver.order_id = orderid
+            order = driver.order
+            orderid = order.id
             destination = {'name': order.dest_name, 'latitude': order.dest_lat, 'longitude': order.dest_lon}
-        return JsonResponse({'errcode': errcode})
+        return JsonResponse({'errcode': errcode, 'order': orderid, 'destination': destination})
 
 
 def getorder(request):
