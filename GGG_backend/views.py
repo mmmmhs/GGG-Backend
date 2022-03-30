@@ -165,7 +165,26 @@ def preorder(request):
                 name=user.username).first()  # 找到对应的司机
             driver.position = int(origin)
         return JsonResponse({'errcode': errcode})
-    # if (request.method == 'GET'):
+    if (request.method == 'GET'):
+        try:
+            sessionId = request.get('sess')
+        except Exception as e:
+            return HttpResponse("error:{}".format(e), status=405)
+        user = SessionId.objects.filter(sessId=sessionId).first()
+        errcode = -1
+        orderid = 0
+        destination = {}
+        if not user or user.job == 'passenger': # 不能为空，不能为乘客
+            errcode = -10
+            return JsonResponse({'errcode': errcode})
+        if user.status != 1:
+            errcode = 0
+            order = Order.objects.filter(driver=user.username).first()
+            orderid = order.id
+            driver = Driver.objects.filter(name=user.username).first()
+            driver.order_id = orderid
+            destination = {'name': order.dest_name, 'latitude': order.dest_lat, 'longitude': order.dest_lon}
+        return JsonResponse({'errcode': errcode})
 
 
 def getorder(request):
