@@ -20,20 +20,22 @@ class Driver(models.Model):
 
 
 class SessionId(models.Model):
-    sessId = models.CharField(max_length=500)  # 加密后的sessionID
-    username = models.CharField(unique=True, max_length=500)  # openID
-    job = models.CharField(max_length=100)
+    sessId=models.CharField(max_length=500)  # 加密后的sessionID
+    username=models.CharField(unique=True, max_length=500)  # openID
+    job=models.CharField(max_length=100)
 
 
 class Order(models.Model):
-    passenger = models.ForeignKey(
+    passenger=models.ForeignKey(
         Passenger, on_delete=models.CASCADE)
-    driver = models.CharField(max_length=500)##openid
-    departure = models.IntegerField(default=0, blank=True)
-    destination_lat = models.IntegerField(default=0, blank=True)
-    destination_lon = models.IntegerField(default=0,blank=True)
-    status = models.CharField(max_length=10, default='0', blank=True)#0进行中 1匹配好 2已完成
+    driver=models.CharField(max_length=500) #openid
+    departure=models.IntegerField(default=0, blank=True)
+    dest_lat=models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
+    dest_lon=models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
+    match_time=models.FloatField(default=0, blank=True)
+    status=models.CharField(max_length=10, default='0', blank=True) # 0进行中 1匹配好 2已完成
+
 
 class Poi(models.Model):
-	lat = models.FloatField(default=0, blank=True)
-	lon = models.FloatField(default=0, blank=True)
+    lat=models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
+    lon=models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)

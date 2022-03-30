@@ -3,7 +3,9 @@ from email.policy import default
 import json
 from logging import exception
 from re import U
+import time
 from django.forms import ValidationError
+from django.forms.models import model_to_dict
 from django.shortcuts import render
 # Create your views here.
 from django.http import HttpResponse, JsonResponse
@@ -95,12 +97,17 @@ def pois(request):
     if(request.method == 'GET'):
         try:
             sess = request.GET.get('sess')
-            if not SessionId.objects.filter(sessId=sess).first():
+            if not SessionId.objects.filter(sessId=sess):
                 return JsonResponse({'errcode': -2, 'pois': []})
             else:
-                pass
+                array = []
+                res = Poi.objects.all()
+                for poi in res:
+                    array.append(model_to_dict(poi))
+                return JsonResponse({'errcode': 0, 'pois': array})
         except Exception as e:
-            return HttpResponse("error:{}".format(e), status=405)	
+            return HttpResponse("error:{}".format(e), status=405)
+
 
 def order(request):
     if (request.method == 'POST'):
@@ -140,21 +147,43 @@ def order(request):
         return JsonResponse({'errcode':errcode,'info':driver,'path':route})
 
 def preorder(request):
-    if (request.method == 'POST'): # POST方法，对应的是司机准备接单的环节
-        try: 
+    if (request.method == 'POST'):  # POST方法，对应的是司机准备接单的环节
+        try:
             reqjson = json.loads(request.body)
             sessionId = reqjson['sess']
             origin = reqjson['origin']
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
-        user = SessionId.objects.filter(sessId=sessionId).first() # 找到对应user
+        user = SessionId.objects.filter(sessId=sessionId).first()  # 找到对应user
         errcode = -1
-        if not user or user.job == 'passenger': # 不能为空，不能为乘客
+        if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
-            return JsonResponse({'errcode' : errcode})
-        if user.status == 0: # 0代表没有订单
+            return JsonResponse({'errcode': errcode})
+        if user.status == 0:  # 0代表没有订单
             errcode = 0
-            driver = Driver.objects.filter(name = user.username).first() # 找到对应的司机
+            driver = Driver.objects.filter(
+                name=user.username).first()  # 找到对应的司机
             driver.position = int(origin)
-        return JsonResponse({'errcode' : errcode})
+        return JsonResponse({'errcode': errcode})
     # if (request.method == 'GET'):
+
+
+def getorder(request):
+    if(request.method == 'POST'):
+        try:
+            reqjson = json.loads(request.body)
+            sess = reqjson['sess']
+            errcode = 0
+            user = SessionId.objects.filter(sessId=sess).first()
+            if not user or user.job == 'passenger':
+                errcode = -2
+            orderid = reqjson['order']
+            order = Order.objects.get(id=orderid)
+            begin_time = order.match_time
+            end_time = time.time()
+            if end_time - begin_time > 5:
+                errcode = -1
+				# 取消当前司机状态，与下一司机匹配
+            info = order.passenger.name[0:5]
+        except Exception as e:
+            return HttpResponse("error:{}".format(e), status=405)
