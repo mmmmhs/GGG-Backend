@@ -20,7 +20,7 @@ class Driver(models.Model):
 
 
 class SessionId(models.Model):
-    sessId=models.CharField(max_length=500)  # 加密后的sessionID
+    sessId=models.CharField(primary_key=True, max_length=500)  # 加密后的sessionID
     username=models.CharField(unique=True, max_length=500)  # openID
     job=models.CharField(max_length=100)
 

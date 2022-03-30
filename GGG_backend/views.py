@@ -87,7 +87,7 @@ def reg(request):
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
         try:
-            user = SessionId.objects.filter(sessId=sess).first()
+            user = SessionId.objects.get(sessId=sess)
             if(user.job == "passenger"):
                 Passenger.objects.create(name=user.username)
             elif(user.job == "driver"):
@@ -102,7 +102,7 @@ def pois(request):
     if(request.method == 'GET'):
         try:
             sess = request.GET.get('sess')
-            if not SessionId.objects.filter(sessId=sess):
+            if not SessionId.objects.get(sessId=sess):
                 return JsonResponse({'errcode': -2, 'pois': []})
             else:
                 array = []
@@ -115,8 +115,7 @@ def pois(request):
 
 
 def match(sess):
-    pass
-
+    sessid = SessionId.objects.get(sessId=sessid)
 
 def order(request):
     if (request.method == 'POST'):
@@ -214,7 +213,7 @@ def getorder(request):
             reqjson = json.loads(request.body)
             sess = reqjson['sess']
             errcode = 0
-            user = SessionId.objects.filter(sessId=sess).first()
+            user = SessionId.objects.get(sessId=sess)
             if not user or user.job == 'passenger':
                 errcode = -2
             orderid = reqjson['order']
