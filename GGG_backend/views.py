@@ -1,3 +1,4 @@
+from jsonpath import jsonpath
 from ast import Return
 from email.policy import default
 import json
@@ -46,34 +47,36 @@ def login(request):
             code = reqjson['code']
             job = reqjson['job']
         except Exception as e:
-            return HttpResponse("error:{}".format(e), status=405)
+            return JsonResponse({'errcode': 403, 'sess': "", 'order': 0})
         data = get_wx_response(code)
         try:
             openID = data['openid']
             sessionID = get_3rd_session(data['session_key'], openID, job)
-            print(openID, sessionID)
+            print(openID, job)
             try:
                 errorcode = data['errcode']
             except Exception:
                 errorcode = 0
             if errorcode != 0:
-                return JsonResponse({'errcode': errorcode, 'sess': ""})
+                return JsonResponse({'errcode': errorcode, 'sess': "", 'order': 0})
             if job == 'passenger':
-                user = Passenger.objects.filter(name=openID).first()
+                user = Passenger.objects.get(name=openID)
             elif job == 'driver':
-                user = Driver.objects.filter(name=openID).first()
+                user = Driver.objects.get(name=openID)
             else:
                 user = 0
             if not user:
                 errorcode = -10
             SessionId.objects.update_or_create(username=openID, defaults={
                                                "sessId": sessionID, "job": job})
-            orderid = user.order_id
+            orderid = -1
+            if user.myorder:
+                orderid = user.myorder.id
             res = JsonResponse(
                 {'errcode': errorcode, 'sess': sessionID, 'order': orderid})
             return res
         except Exception as e:
-            return HttpResponse("error:{}".format(e), status=405)
+            return JsonResponse({'errcode': 405, 'sess': "", 'order': 0})
 
 
 def reg(request):
@@ -111,12 +114,8 @@ def pois(request):
             return HttpResponse("error:{}".format(e), status=405)
 
 
-def match_from_passenger(sess, dest_lat, dest_lon):
-	if len(driver_for_order) > 0:
-		openid = SessionId.objects.filter(sessId=sess).first()
-		passenger = Passenger.objects.get(name=openid)
-		Order.objects.create(
-			passenger=passenger, driver=driver_for_order[0], departure=passenger.position, dest_lat=dest_lat, dest_lon=dest_lon, match_time=time.time(), )
+def match(sess):
+    pass
 
 
 def order(request):
@@ -128,15 +127,15 @@ def order(request):
             dest = reqjson['dest']
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
-        user = SessionId.objects.filter(sessId=sessionId).first()
+        user = SessionId.objects.filter(sessId=sessionId).first() # 需改
         errcode = 0
         if not user or user.status != 1 or user.job == 'driver':
             errcode = -1
             return JsonResponse({'errcode': errcode})
         user.status = 1
-        order = Order.objects.create(passenger=user, departure=origin,
-                                     destination_lat=dest.latitude, destination_lon=dest.longtitude)
-        order_id = order.id()
+        order = Order.objects.create(passenger=user, departure=origin, dest_name=dest.name,
+                                     dest_lat=dest.latitude, dest_lon=dest.longitude) # 需改
+        order_id = order.id
         return JsonResponse({'errcode': errcode, 'order': order_id})
     elif(request.method == 'GET'):
         try:
@@ -145,17 +144,26 @@ def order(request):
             order_id = reqjson['order']
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
-        user = SessionId.objects.filter(sessId=sessionId).first()
+        user = SessionId.objects.filter(sessId=sessionId).first() # 需改
         order = Order.objects.filter(passenger=user).first()
         errcode = -1
         if not user or order.status == 0 or user.status == 0:
             return JsonResponse({'errcode': errcode})
-        driver = Driver.objects.filter(name=order.driver).first()
+        driver = Driver.objects.get(name=order.driver)
         errcode = 0
-        poi = Poi.objects.filter(id=order.departure)  # ??此处id需测试
+        poi = Poi.objects.get(id=order.departure)  # ??此处id真的能这么用吗 我不知道
         response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
-                                '&origin="'+poi.lon+','+poi.lat+'"&destination="'+order.destination_lon+','+order.destination_lat+'"')
-        route = response['route']
+                                '&origin="'+poi.lon+','+poi.lat+'"&destination="'+order.dest_lon+','+order.dest_lat+'"&show_fields=polyline')
+        distance = (jsonpath(response, '$.route.paths[0].distance'))
+        polylines = (jsonpath(response, '$.route.paths[0].steps[*].polyline'))
+        strs = []  # ['lon,lat']
+        for polyline in polylines:
+            strs.extend(polyline.split(';'))
+        route = []
+        for str in strs:
+            temp = str.split(',')
+            route.append({int(temp[0]), int(temp[1])})  # [{lon,lat}]
+        driver = driver[0:5]
         return JsonResponse({'errcode': errcode, 'info': driver, 'path': route})
 
 
@@ -167,15 +175,14 @@ def preorder(request):
             origin = reqjson['origin']
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
-        user = SessionId.objects.filter(sessId=sessionId).first()  # 找到对应user
+        user = SessionId.objects.filter(sessId=sessionId).first()  # 找到对应user # 需改
         errcode = -1
         if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
             return JsonResponse({'errcode': errcode})
         if user.status == 0:  # 0代表没有订单
             errcode = 0
-            driver = Driver.objects.filter(
-                name=user.username).first()  # 找到对应的司机
+            driver = Driver.objects.get(name=user.username) # 找到对应的司机
             driver.position = int(origin)
         return JsonResponse({'errcode': errcode})
     if (request.method == 'GET'):
@@ -183,21 +190,22 @@ def preorder(request):
             sessionId = request.get('sess')
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
-        user = SessionId.objects.filter(sessId=sessionId).first()
+        user = SessionId.objects.filter(sessId=sessionId).first() # 需改
         errcode = -1
         orderid = 0
         destination = {}
-        if not user or user.job == 'passenger': # 不能为空，不能为乘客
+        if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
             return JsonResponse({'errcode': errcode})
+        # 这里将来用来做司乘匹配
         if user.status != 1:
             errcode = 0
-            order = Order.objects.filter(driver=user.username).first()
+            driver = Driver.objects.get(name=user.username)
+            order = driver.myorder
             orderid = order.id
-            driver = Driver.objects.filter(name=user.username).first()
-            driver.order_id = orderid
-            destination = {'name': order.dest_name, 'latitude': order.dest_lat, 'longitude': order.dest_lon}
-        return JsonResponse({'errcode': errcode})
+            destination = {'name': order.dest_name,
+                           'latitude': order.dest_lat, 'longitude': order.dest_lon}
+        return JsonResponse({'errcode': errcode, 'order': orderid, 'destination': destination})
 
 
 def getorder(request):
