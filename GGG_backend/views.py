@@ -204,15 +204,14 @@ def preorder(request):
             origin = reqjson['origin']
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
-        user = SessionId.objects.filter(
-            sessId=sessionId).first()  # 找到对应user 
+        user = SessionId.objects.get(sessId=sessionId)  # 找到对应user 
         errcode = -1
         if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
             return JsonResponse({'errcode': errcode})
-        if user.status == 0:  # 0代表没有订单
+        driver = Driver.objects.get(name=user.username)  # 找到对应的司机
+        if driver.status == 0:  # 0代表没有订单
             errcode = 0
-            driver = Driver.objects.get(name=user.username)  # 找到对应的司机
             driver.position = int(origin)
         return JsonResponse({'errcode': errcode})
     if (request.method == 'GET'):
@@ -220,21 +219,20 @@ def preorder(request):
             sessionId = request.get('sess')
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
-        user = SessionId.objects.filter(sessId=sessionId).first()  
+        user = SessionId.objects.get(sessId=sessionId) # 找到对应user
         errcode = -1
         orderid = 0
         destination = {}
         if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
-            return JsonResponse({'errcode': errcode})
-        if user.statis == 0: # 司机闲着就给他匹配
+            return JsonResponse({'errcode': errcode, 'order': orderid, 'destination': destination})
+        driver = Driver.objects.get(name=user.username)  # 找到对应的司机        
+        if driver.status == 0: # 司机闲着就给他匹配
             matching = match(sessionId)
             if matching == 0: # 如果匹配上了
-                user.status = 1
-        # 这里将来用来做司乘匹配
-        if user.status != 0: # 状态不是0表明有订单，正在前往或者是已经接到乘客
+                driver.status = 1
+        if driver.status != 0: # 状态不是0表明有订单，正在前往或者是已经接到乘客
             errcode = 0
-            driver = Driver.objects.get(name=user.username)
             order = driver.myorder
             orderid = order.id
             destination = {'name': order.dest_name,
