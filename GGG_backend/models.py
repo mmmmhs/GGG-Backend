@@ -28,8 +28,7 @@ class SessionId(models.Model):
 class Order(models.Model):
     mypassenger=models.CharField(max_length=500) #openid
     mydriver=models.CharField(max_length=500) #openid
-    departure=models.IntegerField(default=0, blank=True)
-    dest_name=models.CharField(max_length=500) 
+    departure=models.IntegerField(default=0, blank=True) 
     dest_lat=models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
     dest_lon=models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
     match_time=models.FloatField(default=0, blank=True)
