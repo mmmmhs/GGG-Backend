@@ -205,7 +205,7 @@ def preorder(request):
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
         user = SessionId.objects.filter(
-            sessId=sessionId).first()  # 找到对应user # 需改
+            sessId=sessionId).first()  # 找到对应user 
         errcode = -1
         if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
@@ -220,15 +220,19 @@ def preorder(request):
             sessionId = request.get('sess')
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
-        user = SessionId.objects.filter(sessId=sessionId).first()  # 需改
+        user = SessionId.objects.filter(sessId=sessionId).first()  
         errcode = -1
         orderid = 0
         destination = {}
         if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
             return JsonResponse({'errcode': errcode})
+        if user.statis == 0: # 司机闲着就给他匹配
+            matching = match(sessionId)
+            if matching == 0: # 如果匹配上了
+                user.status = 1
         # 这里将来用来做司乘匹配
-        if user.status != 1:
+        if user.status != 0: # 状态不是0表明有订单，正在前往或者是已经接到乘客
             errcode = 0
             driver = Driver.objects.get(name=user.username)
             order = driver.myorder
