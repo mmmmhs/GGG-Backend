@@ -229,7 +229,7 @@ def preorder(request):
             return JsonResponse({'errcode': errcode, 'order': orderid, 'destination': destination})
         driver = Driver.objects.get(name=user.username)  # 找到对应的司机        
         if driver.status == 0: # 司机闲着就给他匹配
-            matching = match(sessionId)
+            matching = match(user.username, user.job)
             if matching == 0: # 如果匹配上了
                 driver.status = 1
         if driver.status != 0: # 状态不是0表明有订单，正在前往或者是已经接到乘客
