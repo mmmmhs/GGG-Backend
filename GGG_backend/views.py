@@ -113,39 +113,40 @@ def pois(request):
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
 
-# 司乘匹配 传入sessionid 返回0:匹配成功 -1:需要等待 -2:参数错误
-def match(sess):
-	try:
-		sessid = SessionId.objects.get(sessId=sess)
-		if sessid.job == "passenger":
-			if len(driver_for_order) > 0:
-				user = Passenger.objects.get(name=sessid.username)
-				order = user.myorder
-				order.mydriver = driver_for_order[0].name
-				order.match_time = time.time()
-				order.status = 1
-				driver_for_order.pop(0)
-				passenger_for_order.pop(0)
-				return 0
-			else:
-				return -1
-		if sessid.job == "driver":
-			if len(passenger_for_order) > 0:
-				user = Driver.objects.get(name=sessid.username)
-				order = passenger_for_order[0].myorder
-				order.mydriver = user.name
-				order.match_time = time.time()
-				order.status = 1
-				driver_for_order.pop(0)
-				passenger_for_order.pop(0)
-				return 0
-			else:
-				return -1
-		else:
-			return -2		
-	except Exception as e:
-		logger.warning(e)
-		return -2
+# 司乘匹配 传入openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
+
+def match(openid, job):
+    try:
+        if job == "passenger":
+            if len(driver_for_order) > 0:
+                user = Passenger.objects.get(name=openid)
+                order = user.myorder
+                order.mydriver = driver_for_order[0].name
+                order.match_time = time.time()
+                order.status = 1
+                driver_for_order.pop(0)
+                passenger_for_order.pop(0)
+                return 0
+            else:
+                return -1
+        if job == "driver":
+            if len(passenger_for_order) > 0:
+                user = Driver.objects.get(name=openid)
+                order = passenger_for_order[0].myorder
+                order.mydriver = user.name
+                order.match_time = time.time()
+                order.status = 1
+                driver_for_order.pop(0)
+                passenger_for_order.pop(0)
+                return 0
+            else:
+                return -1
+        else:
+            return -2
+    except Exception as e:
+        logger.warning(e)
+        return -2
+
 
 def order(request):
     if (request.method == 'POST'):
@@ -247,8 +248,11 @@ def getorder(request):
             sess = reqjson['sess']
             errcode = 0
             user = SessionId.objects.get(sessId=sess)
-            if not user or user.job == 'passenger':
-                errcode = -2
+            if not user or user.job != 'driver':
+                return JsonResponse({'errcode': -2, 'info': "", 'path': [], 'time': 0})
+            driver = Driver.objects.get(name=user.username)
+            if not driver or not driver.myorder:
+                return JsonResponse({'errcode': -2, 'info': "", 'path': [], 'time': 0})
             orderid = reqjson['order']
             order = Order.objects.get(id=orderid)
             begin_time = order.match_time
@@ -256,6 +260,8 @@ def getorder(request):
             if end_time - begin_time > 5:
                 errcode = -1
                 # 取消当前司机状态，与下一司机匹配
+                driver.status = 0
+                passenger = driver.myorder.mypassenger
             info = order.passenger.name[0:5]
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
