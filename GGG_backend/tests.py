@@ -5,7 +5,7 @@ from GGG_backend.models import Driver, Order, Passenger, SessionId
 import GGG_backend.views
 from unittest import mock
 from unittest.mock import patch
-from GGG_backend.views import get_3rd_session
+from GGG_backend.views import get_3rd_session, driver_unmatched
 
 
 class login_test(TestCase):
@@ -72,3 +72,33 @@ class login_test(TestCase):
             self.assertEqual(code, 1)
         except Exception as e:
             print("error:{}".format(e))
+
+    def test_driver_order_post_okay(self):
+        response = self.client.post(
+            'api/driver_order', data={'sess': "510", 'origin': 5}, content_type='application/json')
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code, 0)
+            driver = Driver.objects.get(name='510')
+            origin = driver.position
+            status = driver.status
+            self.assertEqual(status, 1)
+            self.assertEqual(origin, 5)
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    def test_driver_order_get_okay(self):
+        response = self.client.get(
+            'api/driver_order', data={'sess': "510"}, content_type='application/json')
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code, 2)
+            driver = Driver.objects.get(name='510')
+            status = driver.status
+            orderid = driver.orderid
+            origin = driver.position
+            self.assertEqual(orderid, -1)
+            self.assertEqual(status, 1)
+            self.assertEqual(origin, 5)
+        except Exception as e:
+            print('error:{}'.format(e))
