@@ -95,7 +95,7 @@ class login_test(TestCase):
             self.assertEqual(code, 2)
             driver = Driver.objects.get(name='510')
             status = driver.status
-            orderid = driver.orderid
+            orderid = driver.order_id
             origin = driver.position
             self.assertEqual(orderid, -1)
             self.assertEqual(status, 1)

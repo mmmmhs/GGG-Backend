@@ -1,5 +1,3 @@
-from pyexpat import model
-from re import M
 from django.db import models
 
 # Create your models here.
@@ -10,7 +8,7 @@ class Passenger(models.Model):
         primary_key=True, unique=True, max_length=500)  # openid
     status = models.CharField(
         max_length=100, default='0', blank=True)  # 0=unactive 1=匹配池 2=已匹配池 3=运客中 4=待支付
-    myorder = models.ForeignKey("Order", null=True, on_delete=models.SET_NULL)
+    myorder_id = models.IntegerField(default=-1)
     position = models.IntegerField(default=0, blank=True)  # poi编号
 
 
@@ -19,7 +17,7 @@ class Driver(models.Model):
         primary_key=True, unique=True, max_length=500)  # openid
     status = models.CharField(
         max_length=100, default='0', blank=True)  # 0=unactive 1=匹配池 2=已匹配池 3=运客中 4=待支付
-    myorder = models.ForeignKey("Order", null=True, on_delete=models.SET_NULL)
+    myorder_id = models.IntegerField(default=-1)
     position = models.IntegerField(default=0, blank=True)
 
 
