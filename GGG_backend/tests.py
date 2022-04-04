@@ -1,7 +1,7 @@
 from distutils.log import error
 from urllib import response
 from django.test import TestCase
-from GGG_backend.models import Driver, Order, Passenger, SessionId
+from GGG_backend.models import Driver, Order, Passenger, SessionId, Poi
 import GGG_backend.views
 from unittest import mock
 from unittest.mock import patch
@@ -15,6 +15,12 @@ class login_test(TestCase):
         SessionId.objects.create(sessId="510", username="azi", job="Driver")
         Passenger.objects.create(name='Diana')
         Driver.objects.create(name="Bella")
+        Poi.objects.create(name='senpai', latitude=114,
+                           longitude=514, price_per_meter=810, speed=1919)
+        Poi.objects.create(name='mur', latitude=114,
+                           longitude=514, price_per_meter=810, speed=1919)
+        Poi.objects.create(name='kmr', latitude=114,
+                           longitude=514, price_per_meter=810, speed=1919)                                       
 
     @patch("GGG_backend.views.get_wx_response")
     def test_login_passenger(self, mock_get_wx_response):
@@ -90,8 +96,6 @@ class login_test(TestCase):
             self.assertEqual(code, 1)
         except Exception as e:
             print("error:{}".format(e))
-    
-    
 
     def test_driver_order_post_okay(self):
         response = self.client.post(
@@ -123,5 +127,31 @@ class login_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
-def test_pois(self):
-    response = self.client.get()        
+    def test_pois(self):
+        response = self.client.get(
+            'api/pois', data={'sess': "510"}, content_type='application/json')
+        try:
+            errcode = response.json()['errcode']
+            pois = response.json()['pois']
+            self.assertEqual(errcode, 0)
+            namelist, lat, lon, price, speed = []
+            for item in pois:
+                namelist.append(item['name'])
+                lat.append(item['latitude'])
+                lon.append(item['longitude'])
+                price.append(item['price_per_meter'])
+                speed.append(item['speed'])
+            self.assertEqual(len(pois), 3)
+            self.assertEqual(namelist[0], "senpai")
+            self.assertEqual(namelist[1], "mur")
+            self.assertEqual(namelist[2], "kmr")
+            for item in lat:
+                self.assertEqual(item, 114)
+            for item in lon:
+                self.assertEqual(item, 514)
+            for item in price:
+                self.assertEqual(item, 810)    
+            for item in speed:
+                self.assertEqual(item, 1919)    
+        except Exception as e:
+            print('error:{}'.format(e))
