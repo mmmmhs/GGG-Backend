@@ -168,7 +168,6 @@ def check_time(order_id):
 
 # 乘客、司机取消订单（或司机超时）
 
-
 def cancel_order(openid, job):
     cancel_user, influenced_user, order = None
     if job == "passenger":
@@ -203,7 +202,7 @@ def passenger_order(request):
         passenger.status = 1
         order = Order.objects.create(mypassenger=passengername, departure=origin, dest_name=dest.name,
                                      dest_lat=dest.latitude, dest_lon=dest.longitude)
-        passenger.order = order
+        passenger.myorder_id = order.id
         order_id = order.id
         passenger_unmatched.append(passenger)
         return JsonResponse({'errcode': errcode, 'order': order_id})
@@ -217,7 +216,7 @@ def passenger_order(request):
             return HttpResponse("error:{}".format(e), status=405)
         sessionId = SessionId.objects.get(sessId=sess)
         passengername = sessionId.username
-        passenegr = Passenger.objects.get(name=passengername)
+        passenger = Passenger.objects.get(name=passengername)
         order = Order.objects.get(id=order_id)
         errcode = -10
         if not passenger:
@@ -295,7 +294,9 @@ def get_order_money(request):
     passengername = sessionId.username
     order = Order.objects.get(id=order_id)
     passenger = Passenger.objects.get(name=passengername)
-    return
+    if not order or not passenger:
+        return JsonResponse({'errcode':-1})
+    return JsonResponse({'errcode':0,'money':order.money})
 
 
 def passenger_pay(request):
