@@ -1,4 +1,5 @@
 from django.db import models
+import django.utils.timezone as timezone
 
 # Create your models here.
 
@@ -37,6 +38,8 @@ class Order(models.Model):
     dest_lon = models.DecimalField(
         default=0, blank=True, max_digits=10, decimal_places=6)
     match_time = models.FloatField(default=0, blank=True)
+    start_time = models.DateTimeField(default=timezone.now)
+    end_time = models.DateTimeField(default=0, blank = True)
     dest_name = models.CharField(max_length=50, default='0', blank=True)
     # 0订单发起，正在等待司机接单 1司乘匹配完成 2订单结束
     status = models.CharField(max_length=10, default='0', blank=True)
@@ -49,6 +52,8 @@ class Poi(models.Model):
                               max_digits=10, decimal_places=6)
     longitude = models.DecimalField(default=0, blank=True,
                               max_digits=10, decimal_places=6)
-
-class Settings(models.Model):
     price_per_meter = models.IntegerField(default = 1)
+    speed = models.FloatField(default = 1.0)
+
+class Setting(models.Model):
+    pois = models.CharField(max_length=1000, default='')
