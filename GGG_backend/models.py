@@ -39,7 +39,7 @@ class Order(models.Model):
         default=0, blank=True, max_digits=10, decimal_places=6)
     match_time = models.FloatField(default=0, blank=True)
     start_time = models.DateTimeField(default=timezone.now)
-    end_time = models.DateTimeField(default=0, blank = True)
+    end_time = models.DateTimeField(default=0, blank=True)
     dest_name = models.CharField(max_length=50, default='0', blank=True)
     # 0订单发起，正在等待司机接单 1司乘匹配完成 2订单结束
     status = models.CharField(max_length=10, default='0', blank=True)

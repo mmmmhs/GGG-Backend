@@ -1,3 +1,4 @@
+from array import array
 from unicodedata import name
 from jsonpath import jsonpath
 from ast import Return
@@ -107,17 +108,19 @@ def pois(request):
             if not SessionId.objects.get(sessId=sess):
                 return JsonResponse({'errcode': -2, 'pois': []})
             else:
+                poi_str = Setting.objects.get(id=1).pois
+                poi_list = poi_str.split(',')
                 array = []
-                res = Poi.objects.all()
-                for poi in res:
+                for i in poi_list:
                     array.append(model_to_dict(
-                        poi, fields=['id', 'name', 'latitude', 'longitude']))
+                        Poi.objects.get(id=i), fields=['id', 'name', 'latitude', 'longitude']))
                 return JsonResponse({'errcode': 0, 'pois': array})
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
 
 # 司乘匹配 传入openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
 # 修改order.satus
+
 
 def match(openid, job):
     try:
@@ -169,6 +172,7 @@ def check_time(order_id):
 # 乘客、司机取消订单（或司机超时）
 # 修改status 司机myorder_id 改变池子
 
+
 def cancel_order(openid, job):
     cancel_user, influenced_user, order = None
     if job == "passenger":
@@ -182,7 +186,7 @@ def cancel_order(openid, job):
             passenger_matched.remove(cancel_user.name)
         if cancel_user.name in passenger_unmatched:
             passenger_unmatched.remove(cancel_user.name)
-        influenced_user.myorder_id = -1       
+        influenced_user.myorder_id = -1
     elif job == "driver":
         cancel_user = Driver.objects.get(name=openid)
         order = Order.objects.get(id=cancel_user.myorder_id)
@@ -194,9 +198,10 @@ def cancel_order(openid, job):
             driver_matched.remove(cancel_user.name)
         if cancel_user.name in driver_unmatched:
             driver_unmatched.remove(cancel_user.name)
-        cancel_user.myorder_id = -1    
+        cancel_user.myorder_id = -1
     influenced_user.status = 1
-    cancel_order.status = 0 
+    cancel_order.status = 0
+
 
 def passenger_order(request):
     if (request.method == 'POST'):
@@ -296,7 +301,7 @@ def get_order_info(request):
     for str in strs:
         temp = str.split(',')
         path.append({int(temp[0]), int(temp[1])})  # [{lon,lat}]
-    money = distance * Settings.price_per_meter
+    money = distance * poi.money_per_meter
     order.money = money
     return JsonResponse({'errcode': errcode, 'driver_info': driver_info, 'passenger_info': passenger_info, 'path': path, 'money': money})
 
@@ -316,14 +321,15 @@ def get_order_money(request):
         return JsonResponse({'errcode': -1})
     return JsonResponse({'errcode': 0, 'money': order.money})
 
+
 def get_history_order_info(request):
     if (request.method == 'GET'):
         try:
             reqjson = json.loads(request.body)
             sess = reqjson['sess']
         except Exception as e:
-            return HttpResponse("error:{}".format(e),status=405)
-        sessionId = SessionId.objects.get(sessId = sess)
+            return HttpResponse("error:{}".format(e), status=405)
+        sessionId = SessionId.objects.get(sessId=sess)
         user_job = sessionId.job
         user_name = sessionId.username
         orders = []
@@ -333,7 +339,7 @@ def get_history_order_info(request):
                     passenger_info = order.mypassenger[0:5]
                     driver_info = order.mydriver[0:5]
                     money = order.money
-                    poi = Poi.objects.get(id = order.departure)
+                    poi = Poi.objects.get(id=order.departure)
                     start_location = poi.name
                     # start_time = order.start_time*1000
                     # end_time = order.end_time*1000
@@ -346,34 +352,34 @@ def get_history_order_info(request):
                     passenger_info = order.mypassenger[0:5]
                     driver_info = order.mydriver[0:5]
                     money = order.money
-                    poi = Poi.objects.get(id = order.departure)
+                    poi = Poi.objects.get(id=order.departure)
                     start_location = poi.name
                     # start_time = order.start_time*1000
                     # end_time = order.end_time*1000
                     end_location = order.dest_name
                     status = order.status
                     # orders.append({'driver_info':driver_info,'passenger_info':passenger_info,'start_time':start_time,'end_time':end_time,money,'start_location':start_location,'end_location':end_location,'status':status})
-        return JsonResponse({'orders':orders})
-             
+        return JsonResponse({'orders': orders})
+
 
 def passenger_pay(request):
-    if (request.method =='POST'):
+    if (request.method == 'POST'):
         try:
             reqjson = json.loads(request.body)
             sess = reqjson['sess']
             order_id = reqjson['order']
         except Exception as e:
-            return HttpResponse("error:{}".format(e),status=405)
-        sessionId = SessionId.objects.get(sessId = sess)
+            return HttpResponse("error:{}".format(e), status=405)
+        sessionId = SessionId.objects.get(sessId=sess)
         if not sessionId or sessionId.job != 'passenger':
-            return JsonResponse({'errcode':-1})
-        order = Order.objects.get(id = order_id)
+            return JsonResponse({'errcode': -1})
+        order = Order.objects.get(id=order_id)
         passenger_id = order.mypassenger
         driver_id = order.mydriver
-        passenger = Passenger.objects.get(name = passenger_id)
-        driver = Driver.objects.get(name = driver_id)
+        passenger = Passenger.objects.get(name=passenger_id)
+        driver = Driver.objects.get(name=driver_id)
         if not passenger or not driver:
-            return JsonResponse({'errcode':-1})
+            return JsonResponse({'errcode': -1})
         passenger.status = 0
         driver.status = 0
         passenger.myorder_id = -1
@@ -447,9 +453,10 @@ def driver_get_order(request):
             info = order.passenger.name[0:5]
             poi = Poi.objects.get(id=order.departure)
             response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
-                            '&origin="'+poi.longitude+','+poi.latitude+'"&destination="'+order.dest_lon+','+order.dest_lat+'"&show_fields=polyline')
+                                    '&origin="'+poi.longitude+','+poi.latitude+'"&destination="'+order.dest_lon+','+order.dest_lat+'"&show_fields=polyline')
             distance = (jsonpath(response, '$.route.paths[0].distance'))
-            polylines = (jsonpath(response, '$.route.paths[0].steps[*].polyline'))
+            polylines = (
+                jsonpath(response, '$.route.paths[0].steps[*].polyline'))
             strs = []  # ['lon,lat;lon,lat']
             for polyline in polylines:
                 strs.extend(polyline.split(';'))
@@ -457,14 +464,15 @@ def driver_get_order(request):
             for str in strs:
                 temp = str.split(',')
                 path.append({int(temp[0]), int(temp[1])})  # [{lon,lat}]
-            try:    
-                speed = Settings.objects.get(id=1).speed # xugai
+            try:
+                speed = poi.speed
             except exception:
                 return JsonResponse({'errcode': -100, 'info': "", 'path': [], 'time': 0})
-            esti_time = distance / speed     
+            esti_time = distance / speed
             return JsonResponse({'errcode': 0, 'info': info, 'path': path, 'time': esti_time})
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
+
 
 def driver_confirm_aboard(request):
     if(request.method == 'POST'):
@@ -488,7 +496,8 @@ def driver_confirm_aboard(request):
             passenger.status = 4
             return JsonResponse({'errcode': 0})
         except exception:
-            return JsonResponse({'errcode': -1})    
+            return JsonResponse({'errcode': -1})
+
 
 def driver_confirm_arrive(request):
     if(request.method == 'POST'):
@@ -513,10 +522,11 @@ def driver_confirm_arrive(request):
             if driver.name in driver_matched:
                 driver_matched.remove(driver.name)
             if passenger.name in passenger_matched:
-                passenger_matched.remove(passenger.name) 
-            return JsonResponse({'errcode': 0})       
+                passenger_matched.remove(passenger.name)
+            return JsonResponse({'errcode': 0})
         except exception:
             return JsonResponse({'errcode': -1})
+
 
 def passenger_cancel(request):
     if(request.method == 'POST'):
@@ -527,9 +537,10 @@ def passenger_cancel(request):
             if not user or user.job != 'passenger':
                 return JsonResponse({'errcode': -1})
             cancel_order(user.username, "passenger")
-            return JsonResponse({'errcode': 0})      
+            return JsonResponse({'errcode': 0})
         except exception:
-            return JsonResponse({'errcode': -1})   
+            return JsonResponse({'errcode': -1})
+
 
 def driver_cancel(request):
     if(request.method == 'POST'):
@@ -539,7 +550,7 @@ def driver_cancel(request):
             user = SessionId.objects.get(sessId=sess)
             if not user or user.job != 'driver':
                 return JsonResponse({'errcode': -1})
-            cancel_order(user.username, "driver") 
-            return JsonResponse({'errcode': 0})     
+            cancel_order(user.username, "driver")
+            return JsonResponse({'errcode': 0})
         except exception:
-            return JsonResponse({'errcode': -1})                                    
+            return JsonResponse({'errcode': -1})
