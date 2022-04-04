@@ -247,28 +247,14 @@ def passenger_order(request):
         if passenger.status == 0:
             errcode = 0
             return JsonResponse({'errcode': errcode})
+        if check_time(order.id) == False:
+            order.status = 0
         # 司乘匹配 传入openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
         match_response = match(passengername, 'passenger')
         if match_response == -2:
             return JsonResponse({'errcode': errcode})
         errcode = passenger.status
         return JsonResponse({'errcode': errcode})
-
-        '''poi = Poi.objects.get(id=order.departure)  # ??此处id真的能这么用吗 我不知道
-        response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
-                                '&origin="'+poi.lon+','+poi.lat+'"&destination="'+order.dest_lon+','+order.dest_lat+'"&show_fields=polyline')
-        distance = (jsonpath(response, '$.route.paths[0].distance'))
-        polylines = (jsonpath(response, '$.route.paths[0].steps[*].polyline'))
-        strs = []  # ['lon,lat']
-        for polyline in polylines:
-            strs.extend(polyline.split(';'))
-        route = []
-        for str in strs:
-            temp = str.split(',')
-            route.append({int(temp[0]), int(temp[1])})  # [{lon,lat}]
-        driver = order.mydriver
-        driver = driver[0:5]
-        return JsonResponse({'errcode': errcode, 'info': driver, 'path': route})'''
 
 
 def get_order_info(request):
@@ -341,11 +327,11 @@ def get_history_order_info(request):
                     money = order.money
                     poi = Poi.objects.get(id=order.departure)
                     start_location = poi.name
-                    # start_time = order.start_time*1000
-                    # end_time = order.end_time*1000
+                    start_time = order.start_time
+                    end_time = order.end_time
                     end_location = order.dest_name
                     status = order.status
-                    # orders.append({'driver_info':driver_info,'passenger_info':passenger_info,'start_time':start_time,'end_time':end_time,money,'start_location':start_location,'end_location':end_location,'status':status})
+                    orders.append({'driver_info':driver_info,'passenger_info':passenger_info,'start_time':start_time,'end_time':end_time,'money':money,'start_location':start_location,'end_location':end_location,'status':status})
         elif user_job == 'driver':
             for order in Order:
                 if order.mydriver == user_name and order.status == 2:
@@ -354,11 +340,11 @@ def get_history_order_info(request):
                     money = order.money
                     poi = Poi.objects.get(id=order.departure)
                     start_location = poi.name
-                    # start_time = order.start_time*1000
-                    # end_time = order.end_time*1000
+                    start_time = order.start_time
+                    end_time = order.end_time
                     end_location = order.dest_name
                     status = order.status
-                    # orders.append({'driver_info':driver_info,'passenger_info':passenger_info,'start_time':start_time,'end_time':end_time,money,'start_location':start_location,'end_location':end_location,'status':status})
+                    orders.append({'driver_info':driver_info,'passenger_info':passenger_info,'start_time':start_time,'end_time':end_time,'money':money,'start_location':start_location,'end_location':end_location,'status':status})
         return JsonResponse({'orders': orders})
 
 
@@ -384,7 +370,9 @@ def passenger_pay(request):
         driver.status = 0
         passenger.myorder_id = -1
         driver.myorder_id = -1
-        return
+        order.end_time = time.time()
+        order.status = 2
+        return JsonResponse({'errcode':0})
 
 
 def driver_order(request):
@@ -464,10 +452,7 @@ def driver_get_order(request):
             for str in strs:
                 temp = str.split(',')
                 path.append({int(temp[0]), int(temp[1])})  # [{lon,lat}]
-            try:
-                speed = poi.speed
-            except exception:
-                return JsonResponse({'errcode': -100, 'info': "", 'path': [], 'time': 0})
+            speed = poi.speed
             esti_time = distance / speed
             return JsonResponse({'errcode': 0, 'info': info, 'path': path, 'time': esti_time})
         except Exception as e:

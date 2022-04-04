@@ -55,6 +55,24 @@ class login_test(TestCase):
         self.assertEqual(order, -1)
         # self.assertEqual(sess, sess_id)
 
+    @patch("GGG_backend.views.get_wx_response")
+    def test_login_gg(self, mock_get_wx_response):
+        data = {
+            'openid': 'Bella',
+            'session_key': 'Yongganniuniubupakunnan'
+        }
+        mock_get_wx_response.return_value = data
+
+        sess_id = get_3rd_session(
+            'Yongganniuniubupakunnan', 'Bella', 'driver')
+        response = self.client.post(
+            "/api/login", data={'code': "beilala"}, content_type="application/json")
+        errcode = response.json()['errcode']
+        sess = response.json()['sess']
+        order = response.json()['order']
+        self.assertEqual(errcode, 403)
+        self.assertEqual(order, 0)
+
     def test_reg_passenger(self):
         response = self.client.post(
             "/api/reg", data={'sess': "773"}, content_type="application/json")
@@ -72,6 +90,8 @@ class login_test(TestCase):
             self.assertEqual(code, 1)
         except Exception as e:
             print("error:{}".format(e))
+    
+    
 
     def test_driver_order_post_okay(self):
         response = self.client.post(
@@ -102,3 +122,6 @@ class login_test(TestCase):
             self.assertEqual(origin, 5)
         except Exception as e:
             print('error:{}'.format(e))
+
+def test_pois(self):
+    response = self.client.get()        
