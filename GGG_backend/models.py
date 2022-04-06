@@ -7,8 +7,7 @@ import django.utils.timezone as timezone
 class Passenger(models.Model):
     name = models.CharField(
         primary_key=True, unique=True, max_length=500)  # openid
-    status = models.CharField(
-        max_length=100, default='0', blank=True)  # 0=unactive 1=匹配池 2=已匹配池 3=运客中 4=待支付
+    status = models.IntegerField(default=0, blank=True)  # 0=unactive 1=匹配池 2=已匹配池 3=运客中 4=待支付
     myorder_id = models.IntegerField(default=-1)
     position = models.IntegerField(default=0, blank=True)  # poi编号
 
@@ -16,8 +15,7 @@ class Passenger(models.Model):
 class Driver(models.Model):
     name = models.CharField(
         primary_key=True, unique=True, max_length=500)  # openid
-    status = models.CharField(
-        max_length=100, default='0', blank=True)  # 0=unactive 1=匹配池 2=已匹配池 3=运客中 4=待支付
+    status = models.IntegerField(default=0, blank=True)  # 0=unactive 1=匹配池 2=已匹配池 3=运客中 4=待支付
     myorder_id = models.IntegerField(default=-1)
     position = models.IntegerField(default=0, blank=True)
 
@@ -42,7 +40,7 @@ class Order(models.Model):
     end_time = models.DateTimeField(default=0, blank=True)
     dest_name = models.CharField(max_length=50, default='0', blank=True)
     # 0订单发起，正在等待司机接单 1司乘匹配完成 2订单结束
-    status = models.CharField(max_length=10, default='0', blank=True)
+    status = models.IntegerField(default=0, blank=True)
     money = models.IntegerField(default = 0)
 
 
