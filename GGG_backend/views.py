@@ -245,7 +245,7 @@ def cancel_order(openid, job):
 
 def get_path(poi, order):
     response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
-                            '&origin="'+poi.longitude+','+poi.latitude+'"&destination="'+order.dest_lon+','+order.dest_lat+'"&show_fields=polyline')
+                            '&origin="'+str(poi.longitude)+','+str(poi.latitude)+'"&destination="'+str(order.dest_lon)+','+str(order.dest_lat)+'"&show_fields=polyline')
     distance = (jsonpath(response, '$.route.paths[0].distance'))
     polylines = (
         jsonpath(response, '$.route.paths[0].steps[*].polyline'))
