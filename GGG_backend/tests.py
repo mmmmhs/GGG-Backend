@@ -1,4 +1,5 @@
 from distutils.log import error
+from unicodedata import name
 from urllib import response
 from django.test import TestCase
 from GGG_backend.models import Driver, Order, Passenger, SessionId, Poi
@@ -7,20 +8,37 @@ from unittest import mock
 from unittest.mock import patch
 from GGG_backend.views import get_3rd_session, driver_unmatched
 
+setup_order_id = 0
+setup_poi_id = 0
 
-class login_test(TestCase):
+class GGG_test(TestCase):
     def setUp(self):
+        # 以下用于测试注册
         SessionId.objects.create(
             sessId="773", username="nana7mi", job="Passenger")
         SessionId.objects.create(sessId="510", username="azi", job="Driver")
+
+        # 以下用于测试登录
         Passenger.objects.create(name='Diana')
         Driver.objects.create(name="Bella")
+
+        # 以下用于测试订单流转
+        SessionId.objects.create(sessId="369", username="arui", job="Passenger")
+        Passenger.objects.create(name="arui")
+        SessionId.objects.create(sessId="963", username='ashuai', job='Driver')
+        Driver.objects.create(name="ashuai")
+        Order.objects.create(mypassenger="arui", money=100)
+        order = Order.objects.filter(mypassenger = 'arui').first()
+        setup_order_id = order.id
+        
+        # POI
         Poi.objects.create(name='senpai', latitude=114,
                            longitude=514, price_per_meter=810, speed=1919)
         Poi.objects.create(name='mur', latitude=114,
                            longitude=514, price_per_meter=810, speed=1919)
         Poi.objects.create(name='kmr', latitude=114,
-                           longitude=514, price_per_meter=810, speed=1919)                                       
+                           longitude=514, price_per_meter=810, speed=1919)  
+        setup_poi_id = Poi.objects.filter(name='senpai').first().id                                                        
 
     @patch("GGG_backend.views.get_wx_response")
     def test_login_passenger(self, mock_get_wx_response):
@@ -96,14 +114,54 @@ class login_test(TestCase):
             self.assertEqual(code, 1)
         except Exception as e:
             print("error:{}".format(e))
+    #测试passenger创建订单
+    def test_passenger_order_post_okay(self): 
+        
+        response = self.client.post('api/passenger_order',data={'sess':'369','origin':5,'dest':{'name':'beijing','latitude':39.915119,'longitude':116.403963}},content_type='application/json')
+        try:
+            code = response.json()['errcode']
+            order_id = response.json()['id']
+            order = Order.objects.filter(id = order_id).first()
+            self.assertEqual(code,0)
+            depature = order.depature
+            self.assertEqual(depature,5)
+            dest_name = order.dest_name
+            self.assertEqual(dest_name,'beijing')
+        except Exception as e:
+            print('error:{}'.format(e))
+    def test_passenger_order_post_already(self):
+        passenger = Passenger.objects.filter(name = 'arui').first()
+        passenger.status = 1
+        response = self.client.post('api/passenger_order',data={'sess':'369','origin':5,'dest':{'name':'beijing','latitude':39.915119,'longitude':116.403963}},content_type='application/json')
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code,-1)
+        except Exception as e:
+            print('error:{}'.format(e))
+    # 测试passenger轮询
+    def test_passenger_order_get_okay(self):
+        order = Order.objects.filter(id = setup_order_id).first()
+        passenger = Passenger.objects.filter(name = 'arui')
+        response = self.client.get('api/passenger_order',data={'sess':'369','order':setup_order_id},content_type='application/json')
+        try:
+            code = response.json()['errcode']
+            status = order.status
+            self.assertEqual(status,code)
+        except Exception as e:
+            print('error:{}'.format(e))
+    #测试获取订单信息
+    def test_get_order_info_okay(self):
+        response = self.client.get('api/get_order_info',data={'sess':'369','order':setup_order_id},content_type = 'application/json')
 
+    # 这是driver_order的POST接口应该成功的测例    
     def test_driver_order_post_okay(self):
         response = self.client.post(
-            'api/driver_order', data={'sess': "510", 'origin': 5}, content_type='application/json')
+            'api/driver_order', data={'sess': "963", 'origin': 5}, content_type='application/json')
         try:
             code = response.json()['errcode']
             self.assertEqual(code, 0)
-            driver = Driver.objects.get(name='510')
+            user = SessionId.objects.filter(sessId=963).first()
+            driver = Driver.objects.filter(name=user.username).first()
             origin = driver.position
             status = driver.status
             self.assertEqual(status, 1)
@@ -111,19 +169,70 @@ class login_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
+    def test_driver_order_post_requestFailed(self):
+       
+        response = self.client.post(
+            'api/driver_order', data={'sess': "963", 'origin': 5}, content_type='text/xml')
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code, 405)
+        except Exception as e:
+            print('error:{}'.format(e))
+
     def test_driver_order_get_okay(self):
         response = self.client.get(
-            'api/driver_order', data={'sess': "510"}, content_type='application/json')
+            'api/driver_order', data={'sess': "963"})
         try:
             code = response.json()['errcode']
             self.assertEqual(code, 2)
-            driver = Driver.objects.get(name='510')
+            user = SessionId.objects.filter(sessId=963).first()
+            driver = Driver.objects.filter(name=user.username).first()
             status = driver.status
             orderid = driver.order_id
             origin = driver.position
             self.assertEqual(orderid, -1)
             self.assertEqual(status, 1)
             self.assertEqual(origin, 5)
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    def test_driver_order_get_requestFailed(self):
+        response = self.client.get(
+            'api/driver_order', data={})
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code, 405)
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    def get_order_money_okay(self):
+        response = self.client.get(
+            'api/get_order_money', data={'sess': 369, 'order': setup_order_id})
+        try:
+            code = response.json()['errcode']
+            money = response.json()['money']
+            self.assertEqual(code, 0)
+            self.assertEqual(money, 100)
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    def get_order_money_failed(self):
+        response = self.client.get(
+            'api/get_order_money', data={'sess': 36900, 'order': setup_order_id * 1000})
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code, -1)
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    def get_order_money_requestFailed(self):
+        response = self.client.get(
+            'api/get_order_money', data={'sess': 369, 'order': setup_order_id})
+        try:
+            code = response.json()['errcode']
+            money = response.json()['money']
+            self.assertEqual(code, 0)
+            self.assertEqual(money, 100)
         except Exception as e:
             print('error:{}'.format(e))
 
@@ -153,5 +262,26 @@ class login_test(TestCase):
                 self.assertEqual(item, 810)    
             for item in speed:
                 self.assertEqual(item, 1919)    
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    @patch("GGG_backend.views.get_path")
+    def test_driver_get_order(self, mock_get_path):
+        mock_get_path.return_value = ([{114, 514}], 1919)
+
+        Driver.objects.filter(name="ashuai").first().myorder_id = setup_order_id
+        Order.objects.filter(mypassenger = 'arui').first().departure = setup_poi_id
+        
+        response = self.client.post(
+            'api/driver_get_order', data={'sess': "963", 'order': setup_order_id}, content_type='application/json')
+        try:
+            errcode = response.json()['errcode']
+            info = response.json()['info']
+            path = response.json()['path']
+            time = response.json()['time']
+            self.assertEqual(errcode, 0)
+            self.assertEqual(info, "arui")
+            self.assertEqual(path, [{114, 514}])
+            self.assertEqual(time, 1)
         except Exception as e:
             print('error:{}'.format(e))
