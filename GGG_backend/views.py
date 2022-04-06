@@ -189,8 +189,8 @@ def cancel_order(openid, job):
     cancel_user, influenced_user, order = None, None, None
     if job == "passenger":
         cancel_user = Passenger.objects.filter(name=openid).first()
-        if cancel_user.name in passenger_matched:
-            passenger_matched.remove(cancel_user.name)
+        if cancel_user.name in passenger_unmatched:
+            passenger_unmatched.remove(cancel_user.name)
         cancel_user.myorder_id = -1    
         if cancel_user.status < 2:
             cancel_user.status = 0
@@ -200,8 +200,8 @@ def cancel_order(openid, job):
         if influenced_user.name in driver_matched:
             driver_matched.remove(influenced_user.name)
             driver_unmatched.insert(0, influenced_user.name)
-        if cancel_user.name in passenger_unmatched:
-            passenger_unmatched.remove(cancel_user.name)
+        if cancel_user.name in passenger_matched:
+            passenger_matched.remove(cancel_user.name)    
         influenced_user.myorder_id = -1
     elif job == "driver":
         cancel_user = Driver.objects.filter(name=openid).first()
