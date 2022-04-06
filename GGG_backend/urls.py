@@ -16,4 +16,6 @@ urlpatterns = [
     path('passenger_cancel', views.passenger_cancel, name='passenger_cancel'),
     path('driver_cancel', views.driver_cancel, name='driver_cancel'),
     path('get_history_order_info',views.get_history_order_info,name='get_history_order_info'),
+    path('passenger_pay',views.passenger_pay,name='passenger_pay'),
+    path('get_order_money',views.get_order_money,name='get_order_money'),
 ]

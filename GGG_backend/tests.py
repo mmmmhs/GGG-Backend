@@ -252,19 +252,17 @@ class GGG_test(TestCase):
     def test_driver_order_get_okay(self):
         response = self.client.get(
             'api/driver_order', data={'sess': "963"})
-        try:
-            code = response.json()['errcode']
-            self.assertEqual(code, 2)
-            user = SessionId.objects.filter(sessId=963).first()
-            driver = Driver.objects.filter(name=user.username).first()
-            status = driver.status
-            orderid = driver.order_id
-            origin = driver.position
-            self.assertEqual(orderid, -1)
-            self.assertEqual(status, 1)
-            self.assertEqual(origin, 5)
-        except Exception as e:
-            print('error:{}'.format(e))
+        
+        code = response.json()['errcode']
+        self.assertEqual(code, 2)
+        user = SessionId.objects.filter(sessId=963).first()
+        driver = Driver.objects.filter(name=user.username).first()
+        status = driver.status
+        orderid = driver.order_id
+        origin = driver.position
+        self.assertEqual(orderid, -1)
+        self.assertEqual(status, 1)
+        self.assertEqual(origin, 5)
 
     # 这是driver_order的GET接口应该失败的测例
     def test_driver_order_get_okay(self):

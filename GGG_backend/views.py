@@ -1,4 +1,4 @@
-from jsonpath import jsonpath
+from jsonpath_ng import jsonpath, parse
 import json
 from logging import exception
 import time
@@ -173,6 +173,7 @@ def match(openid, job):
         else:
             return -2
     except Exception as e:
+        logger.info(openid)
         logger.error(e, exc_info = True)
         return -2
 
@@ -193,6 +194,7 @@ def check_time(order_id):
 
 def cancel_order(openid, job):
     cancel_user, influenced_user, order = None, None, None
+    logger.info(openid+' '+job)
     if job == "passenger":
         cancel_user = Passenger.objects.filter(name=openid).first()
         if cancel_user.name in passenger_unmatched:
@@ -245,17 +247,18 @@ def cancel_order(openid, job):
 
 def get_path(poi, order):
     response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
-                            '&origin="'+str(poi.longitude)+','+str(poi.latitude)+'"&destination="'+str(order.dest_lon)+','+str(order.dest_lat)+'"&show_fields=polyline')
-    distance = (jsonpath(response, '$.route.paths[0].distance'))
-    polylines = (
-        jsonpath(response, '$.route.paths[0].steps[*].polyline'))
+                            '&origin='+str(poi.longitude)+','+str(poi.latitude)+'&destination='+str(order.dest_lon)+','+str(order.dest_lat)+'&show_fields=polyline')
+
+    response = response.json()
+    distance = float([match.value for match in parse('$.route.paths[0].distance').find(response)][0])
+    polylines =[match.value for match in parse('$.route.paths[0].steps[*].polyline').find(response)]
     strs = []  # ['lon,lat;lon,lat']
     for polyline in polylines:
         strs.extend(polyline.split(';'))
     path = []
-    for str in strs:
-        temp = str.split(',')
-        path.append({int(temp[0]), int(temp[1])})  # [{lon,lat}]
+    for str1 in strs:
+        temp = str1.split(',')
+        path.append({"longitude":float(temp[0]), "latitude":float(temp[1])})  # [{lon,lat}]
     return (path, distance)
 
 
@@ -304,9 +307,11 @@ def passenger_order(request):
             return JsonResponse({'errcode': errcode})
         if passenger.status == 0:
             errcode = 0
-            return JsonResponse({'errcode': errcode})
-        if check_time(order.id) == False and passenger.status > 1:  # 已匹配司机超时
-            cancel_order(passengername, 'driver')
+            return JsonResponse({'errcode': errcode})    
+        if check_time(order.id) == False and passenger.status == 2:# 已匹配司机超时
+            order = Order.objects.filter(id=passenger.myorder_id).first()
+            driver = Driver.objects.filter(myorder_id=order.id).first()
+            cancel_order(driver.name, 'driver')
         # 司乘匹配 传入openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
         match_response = match(passengername, 'passenger')
         if match_response == -2:
@@ -480,7 +485,7 @@ def driver_order(request):
         destination = {}
         if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
-            return JsonResponse({'errcode': errcode, 'order': orderid, 'destination': destination})
+            return JsonResponse({'errcode': errcode, 'order': orderid, 'dest': destination})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         if driver.status == 1:  # 司机闲着就给他匹配
             match(sessionId, "driver")
@@ -491,7 +496,7 @@ def driver_order(request):
             destination = {'name': order.dest_name,
                            'latitude': order.dest_lat, 'longitude': order.dest_lon}
         errcode = driver.status
-        return JsonResponse({'errcode': errcode, 'order': orderid, 'destination': destination})
+        return JsonResponse({'errcode': errcode, 'order': orderid, 'dest': destination})
 
 
 def driver_get_order(request):
@@ -512,9 +517,7 @@ def driver_get_order(request):
             passenger = Passenger.objects.filter(name=order.mypassenger).first()
             info = passenger.name[0:5]
             poi = Poi.objects.filter(id=order.departure).first()
-            res = get_path(poi, order)
-            path = res[0]
-            distance = res[1]
+            path, distance = get_path(poi, order)
             speed = poi.speed
             esti_time = distance / speed
             passenger.status = 3
