@@ -505,13 +505,18 @@ def driver_get_order(request):
             order = Order.objects.filter(id=orderid).first()
             if not order:
                 return JsonResponse({'errcode': -1, 'info': "", 'path': [], 'time': 0})
-            info = order.passenger.name[0:5]
+            passenger = Passenger.objects.filter(name=order.mypassenger).first()
+            info = passenger.name[0:5]
             poi = Poi.objects.filter(id=order.departure).first()
             res = get_path(poi, order)
             path = res[0]
             distance = res[1]
             speed = poi.speed
             esti_time = distance / speed
+            passenger.status = 3
+            driver.status = 3
+            passenger.save()
+            driver.save()
             return JsonResponse({'errcode': 0, 'info': info, 'path': path, 'time': esti_time})
         except Exception as e:
             logger.error(e, exc_info = True)
