@@ -182,21 +182,24 @@ def check_time(order_id):
     else:
         return True
 
-# 乘客、司机取消订单（或司机超时）
+# 乘客/司机取消订单（或司机超时）
 # 修改status 司机myorder_id 改变池子
-
 
 def cancel_order(openid, job):
     cancel_user, influenced_user, order = None, None, None
     if job == "passenger":
         cancel_user = Passenger.objects.filter(name=openid).first()
+        if cancel_user.name in passenger_matched:
+            passenger_matched.remove(cancel_user.name)
+        cancel_user.myorder_id = -1    
+        if cancel_user.status < 2:
+            cancel_user.status = 0
+            return
         order = Order.objects.filter(id=cancel_user.myorder_id).first()
         influenced_user = Driver.objects.filter(name=order.mydriver).first()
         if influenced_user.name in driver_matched:
             driver_matched.remove(influenced_user.name)
             driver_unmatched.insert(0, influenced_user.name)
-        if cancel_user.name in passenger_matched:
-            passenger_matched.remove(cancel_user.name)
         if cancel_user.name in passenger_unmatched:
             passenger_unmatched.remove(cancel_user.name)
         influenced_user.myorder_id = -1

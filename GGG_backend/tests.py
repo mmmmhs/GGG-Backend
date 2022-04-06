@@ -392,7 +392,7 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
-    def test_passenger_cancel(self):
+    def test_passenger_cancel_okay(self):
         response = self.client.post(
             'api/passenger_cancel', data={'sess': "369", 'order': setup_order_id}, content_type='application/json')   
         try:
@@ -401,7 +401,7 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
-    def test_driver_cancel(self):
+    def test_driver_cancel_okay(self):
         response = self.client.post(
             'api/passenger_cancel', data={'sess': "963", 'order': setup_order_id}, content_type='application/json')   
         try:
