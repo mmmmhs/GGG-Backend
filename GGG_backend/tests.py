@@ -52,7 +52,7 @@ class GGG_test(TestCase):
             'Jiaranjintianchishenme', 'Diana', 'passenger')
         response = self.client.post(
             "/api/login", data={'code': "ranran", "job": 'passenger'}, content_type="application/json")
-        print(response)
+        # print(response)
         errcode = response.json()['errcode']
         sess = response.json()['sess']
         order = response.json()['order']
@@ -141,7 +141,7 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
     def test_passenger_order_post_bad(self):
-        response = self.clietn.post('api/passenger_order',data={'sess':'178','origin':1,'dest':{'name':'shabi','latitude':121,'longitude':39}},content_type='application/json')
+        response = self.client.post('api/passenger_order',data={'sess':'178','origin':1,'dest':{'name':'shabi','latitude':121,'longitude':39}},content_type='application/json')
         try:
             code = response.json()['errcode']
             self.assertEqual(code,-10)
@@ -171,13 +171,44 @@ class GGG_test(TestCase):
             self.assertEqual(money,100)
         except Exception as e:
             print('error:{}'.format(e))
-
+    def test_get_order_info_bad(self):
+        response = self.client.get('api/get_order_info',data={'sess':'178','order':setup_order_id},content_type = 'application/json')
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code,-1)
+        except Exception as e:
+            print('error:{}'.format(e))
     #测试乘客确认支付
     def test_passenger_pay_okay(self):
         response = self.client.post('api/passenger_pay',data={'sess':'369','order':setup_order_id},content_type = 'application/json')
         try:
             code = response.json()['errcode']
-            
+            self.assertEqual(code,0)
+            passenger = Passenger.objects.filter(name='arui').first()
+            self.assertEqual(passenger.status,0)
+            order = Order.objects.filter(id = setup_order_id).first()
+            self.assertEqual(order.status,2)
+        except Exception as e:
+            print('error:{}'.format(e))
+    def test_passenger_pay_bad(self):
+        response = self.client.post('api/passenger_pay',data={'sess':'183','order':setup_order_id},content_type = 'application/json')
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code,-1)
+        except Exception as e:
+            print('error:{}'.format(e))
+    
+    #测试获取历史订单
+    def test_get_history_order_info(self):
+        response = self.client.get('api/get_history_order_info',data={'sess':'369'},content_type='application/json')
+        try:
+            orders = response.json['orders']
+            passenger = orders[0].passenger_info
+            self.assertEqual(passenger,'arui')
+            money = orders[0].money
+            self.assertEqual(money,100)
+            status = orders[0].status
+            self.assertEqual(status,1)
         except Exception as e:
             print('error:{}'.format(e))
 
@@ -197,9 +228,18 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
-    # 这是driver_order的PO
+    # 这是driver_order的POST接口应该失败的测例    
+    def test_driver_order_post_okay(self):
+        response = self.client.post(
+            'api/driver_order', data={'sess': "369", 'origin': 5}, content_type='application/json')
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code, -10)
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    # 这是driver_order的POST接口应该请求失败的测例
     def test_driver_order_post_requestFailed(self):
-       
         response = self.client.post(
             'api/driver_order', data={'sess': "963", 'origin': 5}, content_type='text/xml')
         try:
@@ -208,6 +248,7 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
+    # 这是driver_order的GET接口应该成功的测例
     def test_driver_order_get_okay(self):
         response = self.client.get(
             'api/driver_order', data={'sess': "963"})
@@ -225,6 +266,17 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
+    # 这是driver_order的GET接口应该失败的测例
+    def test_driver_order_get_okay(self):
+        response = self.client.get(
+            'api/driver_order', data={'sess': "369"})
+        try:
+            code = response.json()['errcode']
+            self.assertEqual(code, -10)
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    # 这是driver_order的GET接口应该请求失败的测例
     def test_driver_order_get_requestFailed(self):
         response = self.client.get(
             'api/driver_order', data={})
@@ -234,7 +286,8 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
-    def get_order_money_okay(self):
+    # 这是get_order_money的GET接口应该成功的测例
+    def test_get_order_money_okay(self):
         response = self.client.get(
             'api/get_order_money', data={'sess': 369, 'order': setup_order_id})
         try:
@@ -245,6 +298,7 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
+    # 这是get_order_money的GET接口应该失败的测例
     def get_order_money_failed(self):
         response = self.client.get(
             'api/get_order_money', data={'sess': 36900, 'order': setup_order_id * 1000})
@@ -254,6 +308,7 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
+    # 这是get_order_money的GET接口应该请求失败的测例
     def get_order_money_requestFailed(self):
         response = self.client.get(
             'api/get_order_money', data={'sess': 369, 'order': setup_order_id})
@@ -321,5 +376,36 @@ class GGG_test(TestCase):
 
     def test_driver_confirm_aboard(self):
         response = self.client.post(
-            'api/driver_get_order', data={'sess': "963", 'order': setup_order_id}, content_type='application/json')
-                     
+            'api/driver_confirm_aboard', data={'sess': "963", 'order': setup_order_id}, content_type='application/json')
+        try:
+            errcode = response.json()['errcode'] 
+            self.assertEqual(errcode, 0)
+        except Exception as e:
+            print('error:{}'.format(e))
+                
+    def test_driver_confirm_arrive(self):
+        response = self.client.post(
+            'api/driver_confirm_arrive', data={'sess': "963", 'order': setup_order_id}, content_type='application/json')
+        try:
+            errcode = response.json()['errcode'] 
+            self.assertEqual(errcode, 0)
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    def test_passenger_cancel(self):
+        response = self.client.post(
+            'api/passenger_cancel', data={'sess': "369", 'order': setup_order_id}, content_type='application/json')   
+        try:
+            errcode = response.json()['errcode'] 
+            self.assertEqual(errcode, 0)
+        except Exception as e:
+            print('error:{}'.format(e))
+
+    def test_driver_cancel(self):
+        response = self.client.post(
+            'api/passenger_cancel', data={'sess': "963", 'order': setup_order_id}, content_type='application/json')   
+        try:
+            errcode = response.json()['errcode'] 
+            self.assertEqual(errcode, 0)
+        except Exception as e:
+            print('error:{}'.format(e))        

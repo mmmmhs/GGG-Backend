@@ -70,14 +70,14 @@ def login(request):
             elif job == 'driver':
                 user = Driver.objects.filter(name=openID).first()
             else:
-                user = 0
-            if not user:
-                return JsonResponse({'errcode': -10, 'sess': "", 'order': 0})
+                user = None
             tmp = SessionId.objects.filter(
                 username=openID).update(sessId=sessionID, job=job)
             if tmp == 0:
                 SessionId.objects.create(
                     username=openID, sessId=sessionID, job=job)
+            if not user:
+                return JsonResponse({'errcode': -10, 'sess': sessionID, 'order': 0})        
             orderid = user.myorder_id
             res = JsonResponse(
                 {'errcode': errorcode, 'sess': sessionID, 'order': orderid})
@@ -430,11 +430,11 @@ def driver_order(request):
             return JsonResponse({'errcode': errcode})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         if driver.status == 0:  # 0代表没有订单
-            errcode = 0
             driver.status = 1
             driver_unmatched.append(driver.name)
             driver.position = int(origin)
         driver.save()
+        errcode = driver.status
         return JsonResponse({'errcode': errcode})
     if (request.method == 'GET'):
         try:
@@ -449,7 +449,7 @@ def driver_order(request):
             return JsonResponse({'errcode': errcode, 'order': orderid, 'destination': destination})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         if driver.status == 1:  # 司机闲着就给他匹配
-            match(sessionId)
+            match(sessionId, "driver")
         if driver.status != 0 and driver.status != 1:  # 状态不是0或者1表明有订单，要么是unactive要么是在待匹配池子里
             errcode = 0
             orderid = driver.myorder_id
@@ -495,17 +495,21 @@ def driver_confirm_aboard(request):
             user = SessionId.objects.filter(sessId=sess).first()
             if not user or user.job != 'driver':
                 return JsonResponse({'errcode': -1})
+                # sessionid需存在 & 是司机
             driver = Driver.objects.filter(name=user.username).first()
             if not driver or driver.myorder_id == -1:
                 return JsonResponse({'errcode': -1})
+                # 对应driver存在
             orderid = reqjson['order']
             order = Order.objects.filter(id=orderid).first()
             if not order:
                 return JsonResponse({'errcode': -1})
+                # order存在
             passenger = Passenger.objects.filter(
                 name=order.mypassenger).first()
             if not passenger:
                 return JsonResponse({'errcode': -1})
+                # order存储passenger存在
             driver.status = 4
             passenger.status = 4
             driver.save()
@@ -555,6 +559,7 @@ def passenger_cancel(request):
             user = SessionId.objects.filter(sessId=sess).first()
             if not user or user.job != 'passenger':
                 return JsonResponse({'errcode': -1})
+                # sessionid存在且为乘客
             cancel_order(user.username, "passenger")
             return JsonResponse({'errcode': 0})
         except exception:
