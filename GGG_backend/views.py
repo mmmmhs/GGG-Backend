@@ -77,7 +77,7 @@ def login(request):
                 SessionId.objects.create(
                     username=openID, sessId=sessionID, job=job)
             if not user:
-                return JsonResponse({'errcode': -10, 'sess': sessionID, 'order': 0})        
+                return JsonResponse({'errcode': -10, 'sess': sessionID, 'order': 0})
             orderid = user.myorder_id
             res = JsonResponse(
                 {'errcode': errorcode, 'sess': sessionID, 'order': orderid})
@@ -137,7 +137,8 @@ def match(openid, job):
                 order.mydriver = driver_unmatched[0]
                 order.match_time = time.time()
                 order.status = 1
-                driver = Driver.objects.filter(name=driver_unmatched[0]).first()
+                driver = Driver.objects.filter(
+                    name=driver_unmatched[0]).first()
                 driver.myorder_id = order
                 driver_matched.append(driver_unmatched.pop(0))
                 passenger_matched.append(passenger_unmatched.pop(0))
@@ -151,7 +152,7 @@ def match(openid, job):
                 user = Driver.objects.filter(name=openid).first()
                 order_id = Passenger.objects.filter(
                     name=passenger_unmatched[0]).first().myorder_id
-                order = Order.objects.filter(id=order_id).first()    
+                order = Order.objects.filter(id=order_id).first()
                 order.mydriver = user.name
                 order.match_time = time.time()
                 user.myorder_id = order
@@ -186,11 +187,11 @@ def check_time(order_id):
 
 
 def cancel_order(openid, job):
-    cancel_user, influenced_user, order = None
+    cancel_user, influenced_user, order = None, None, None
     if job == "passenger":
         cancel_user = Passenger.objects.filter(name=openid).first()
         order = Order.objects.filter(id=cancel_user.myorder_id).first()
-        influenced_user = Driver.objects.filter(id=order.mydriver).first()
+        influenced_user = Driver.objects.filter(name=order.mydriver).first()
         if influenced_user.name in driver_matched:
             driver_matched.remove(influenced_user.name)
             driver_unmatched.insert(0, influenced_user.name)
@@ -203,7 +204,7 @@ def cancel_order(openid, job):
         cancel_user = Driver.objects.filter(name=openid).first()
         order = Order.objects.filter(id=cancel_user.myorder_id).first()
         influenced_user = Passenger.objects.filter(
-            id=order.mypassenger).first()
+            name=order.mypassenger).first()
         if influenced_user.name in passenger_matched:
             passenger_matched.remove(influenced_user.name)
             passenger_unmatched.insert(0, influenced_user.name)
@@ -212,14 +213,18 @@ def cancel_order(openid, job):
         if cancel_user.name in driver_unmatched:
             driver_unmatched.remove(cancel_user.name)
         cancel_user.myorder_id = -1
+    order.status = 0
     influenced_user.status = 1
     cancel_user.status = 0
+    order.save()
     cancel_user.save()
     order.save()
     influenced_user.save()
 
 # 访问高德地图接口
 # 参数：poi, order 返回(path, distance)元组
+
+
 def get_path(poi, order):
     response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
                             '&origin="'+poi.longitude+','+poi.latitude+'"&destination="'+order.dest_lon+','+order.dest_lat+'"&show_fields=polyline')
@@ -234,6 +239,7 @@ def get_path(poi, order):
         temp = str.split(',')
         path.append({int(temp[0]), int(temp[1])})  # [{lon,lat}]
     return (path, distance)
+
 
 def passenger_order(request):
     if (request.method == 'POST'):  # 乘客发起订单
@@ -255,8 +261,8 @@ def passenger_order(request):
             errcode = -1
             return JsonResponse({'errcode': errcode})
         passenger.status = 1  # 乘客状态0->1
-        order = Order.objects.create(mypassenger=passengername, departure=origin, dest_name=dest.name,
-                                     dest_lat=dest.latitude, dest_lon=dest.longitude)  # 创建订单
+        order = Order.objects.create(mypassenger=passengername, departure=origin, dest_name=dest['name'],
+                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'])  # 创建订单
         passenger.myorder_id = order.id
         order_id = order.id
         passenger_unmatched.append(passenger)  # 乘客加入未匹配池
@@ -279,7 +285,7 @@ def passenger_order(request):
         if passenger.status == 0:
             errcode = 0
             return JsonResponse({'errcode': errcode})
-        if check_time(order.id) == False:  # 已匹配司机超时
+        if check_time(order.id) == False and passenger.status > 1:  # 已匹配司机超时
             cancel_order(passengername, 'passenger')
         # 司乘匹配 传入openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
         match_response = match(passengername, 'passenger')
@@ -307,7 +313,7 @@ def get_order_info(request):  # 乘客获取当前订单信息
     driver_info = drivername[0:5]  # 司机前五位
     passenger_info = passengername[0:5]  # 乘客前五位
     poi = Poi.objects.filter(id=order.departure).first()
-    god_ans = get_path(poi,order)
+    god_ans = get_path(poi, order)
     distance = god_ans[1]
     path = god_ans[0]
     money = distance * poi.price_per_meter
@@ -360,7 +366,8 @@ def get_history_order_info(request):  # 司乘获取历史订单
                         status = 2
                     else:
                         status = 1
-                    orders.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time':start_time,'end_time':end_time,'money':money,'start_location':start_location,'end_location':end_location,'status':status})
+                    orders.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time': start_time, 'end_time': end_time,
+                                  'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status})
 
         elif user_job == 'driver':
             for order in Order:
@@ -381,7 +388,8 @@ def get_history_order_info(request):  # 司乘获取历史订单
                         status = 2
                     else:
                         status = 1
-                    orders.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time':start_time,'end_time':end_time,'money':money,'start_location':start_location,'end_location':end_location,'status':status})
+                    orders.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time': start_time, 'end_time': end_time,
+                                  'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status})
         return JsonResponse({'orders': orders})
 
 
@@ -430,11 +438,11 @@ def driver_order(request):
             return JsonResponse({'errcode': errcode})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         if driver.status == 0:  # 0代表没有订单
+            errcode = 0
             driver.status = 1
             driver_unmatched.append(driver.name)
             driver.position = int(origin)
         driver.save()
-        errcode = driver.status
         return JsonResponse({'errcode': errcode})
     if (request.method == 'GET'):
         try:

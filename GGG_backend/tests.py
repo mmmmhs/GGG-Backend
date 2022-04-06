@@ -203,11 +203,11 @@ class GGG_test(TestCase):
         response = self.client.get('api/get_history_order_info',data={'sess':'369'},content_type='application/json')
         try:
             orders = response.json['orders']
-            passenger = orders[0].passenger_info
+            passenger = orders[0]['passenger_info']
             self.assertEqual(passenger,'arui')
-            money = orders[0].money
+            money = orders[0]['money']
             self.assertEqual(money,100)
-            status = orders[0].status
+            status = orders[0]['status']
             self.assertEqual(status,1)
         except Exception as e:
             print('error:{}'.format(e))
@@ -277,7 +277,7 @@ class GGG_test(TestCase):
             print('error:{}'.format(e))
 
     # 这是driver_order的GET接口应该请求失败的测例
-    def test_driver_order_get_requestFailed(self):
+    def test_driver_order_get_request_failed(self):
         response = self.client.get(
             'api/driver_order', data={})
         try:
@@ -309,7 +309,7 @@ class GGG_test(TestCase):
             print('error:{}'.format(e))
 
     # 这是get_order_money的GET接口应该请求失败的测例
-    def get_order_money_requestFailed(self):
+    def get_order_money_request_failed(self):
         response = self.client.get(
             'api/get_order_money', data={'sess': 369, 'order': setup_order_id})
         try:
