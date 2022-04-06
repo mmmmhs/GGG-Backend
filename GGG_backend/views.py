@@ -194,6 +194,7 @@ def cancel_order(openid, job):
         cancel_user.myorder_id = -1    
         if cancel_user.status < 2:
             cancel_user.status = 0
+            cancel_user.save()
             return
         order = Order.objects.filter(id=cancel_user.myorder_id).first()
         influenced_user = Driver.objects.filter(name=order.mydriver).first()
