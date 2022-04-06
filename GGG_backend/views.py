@@ -1,18 +1,10 @@
-from array import array
-from lib2to3.pgen2 import driver
-from unicodedata import name
 from jsonpath import jsonpath
-from ast import Return
-from email.policy import default
 import json
 from logging import exception
 import time
-from django.forms import ValidationError
 from django.forms.models import model_to_dict
-from django.shortcuts import render
 # Create your views here.
 from django.http import HttpResponse, JsonResponse
-from pyparsing import Or
 import requests
 from GGG_backend.models import Driver, Passenger, SessionId, Order, Poi, Setting
 import secoder.settings
@@ -139,7 +131,7 @@ def match(openid, job):
                 order.status = 1
                 driver = Driver.objects.filter(
                     name=driver_unmatched[0]).first()
-                driver.myorder_id = order
+                driver.myorder_id = order_id
                 driver_matched.append(driver_unmatched.pop(0))
                 passenger_matched.append(passenger_unmatched.pop(0))
                 driver.save()
@@ -147,7 +139,7 @@ def match(openid, job):
                 return 0
             else:
                 return -1
-        if job == "driver":
+        elif job == "driver":
             if len(passenger_unmatched) > 0:
                 user = Driver.objects.filter(name=openid).first()
                 order_id = Passenger.objects.filter(
@@ -155,7 +147,7 @@ def match(openid, job):
                 order = Order.objects.filter(id=order_id).first()
                 order.mydriver = user.name
                 order.match_time = time.time()
-                user.myorder_id = order
+                user.myorder_id = order_id
                 order.status = 1
                 driver_matched.append(driver_unmatched.pop(0))
                 passenger_matched.append(passenger_unmatched.pop(0))
@@ -183,7 +175,7 @@ def check_time(order_id):
         return True
 
 # 乘客/司机取消订单（或司机超时）
-# 修改status 司机myorder_id 改变池子
+# 修改status myorder_id 改变池子
 
 def cancel_order(openid, job):
     cancel_user, influenced_user, order = None, None, None
@@ -192,7 +184,7 @@ def cancel_order(openid, job):
         if cancel_user.name in passenger_unmatched:
             passenger_unmatched.remove(cancel_user.name)
         cancel_user.myorder_id = -1    
-        if cancel_user.status < 2:
+        if cancel_user.status < 2: # 匹配前取消
             cancel_user.status = 0
             cancel_user.save()
             return
@@ -206,6 +198,13 @@ def cancel_order(openid, job):
         influenced_user.myorder_id = -1
     elif job == "driver":
         cancel_user = Driver.objects.filter(name=openid).first()
+        if cancel_user.name in driver_unmatched:
+            driver_unmatched.remove(cancel_user.name)
+        cancel_user.myorder_id = -1    
+        if cancel_user.status < 2: # 匹配前取消
+            cancel_user.status = 0
+            cancel_user.save()
+            return    
         order = Order.objects.filter(id=cancel_user.myorder_id).first()
         influenced_user = Passenger.objects.filter(
             name=order.mypassenger).first()
@@ -214,9 +213,6 @@ def cancel_order(openid, job):
             passenger_unmatched.insert(0, influenced_user.name)
         if cancel_user.name in driver_matched:
             driver_matched.remove(cancel_user.name)
-        if cancel_user.name in driver_unmatched:
-            driver_unmatched.remove(cancel_user.name)
-        cancel_user.myorder_id = -1
     order.status = 0
     influenced_user.status = 1
     cancel_user.status = 0
@@ -588,5 +584,5 @@ def driver_cancel(request):
                 return JsonResponse({'errcode': -1})
             cancel_order(user.username, "driver")
             return JsonResponse({'errcode': 0})
-        except exception:
+        except Exception:
             return JsonResponse({'errcode': -1})

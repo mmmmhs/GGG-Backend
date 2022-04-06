@@ -320,7 +320,7 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
-    def test_pois(self):
+    def test_pois_okay(self):
         response = self.client.get(
             'api/pois', data={'sess': "510"}, content_type='application/json')
         try:
@@ -350,7 +350,7 @@ class GGG_test(TestCase):
             print('error:{}'.format(e))
 
     @patch("GGG_backend.views.get_path")
-    def test_driver_get_order(self, mock_get_path):
+    def test_driver_get_order_okay(self, mock_get_path):
         mock_get_path.return_value = ([{114, 514}], 1919)
 
         shuai = Driver.objects.filter(name="ashuai").first()
@@ -374,7 +374,7 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
 
-    def test_driver_confirm_aboard(self):
+    def test_driver_confirm_aboard_okay(self):
         response = self.client.post(
             'api/driver_confirm_aboard', data={'sess': "963", 'order': setup_order_id}, content_type='application/json')
         try:
@@ -383,7 +383,7 @@ class GGG_test(TestCase):
         except Exception as e:
             print('error:{}'.format(e))
                 
-    def test_driver_confirm_arrive(self):
+    def test_driver_confirm_arrive_okay(self):
         response = self.client.post(
             'api/driver_confirm_arrive', data={'sess': "963", 'order': setup_order_id}, content_type='application/json')
         try:
