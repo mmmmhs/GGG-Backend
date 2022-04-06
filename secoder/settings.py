@@ -31,7 +31,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-
+CSRF_TRUSTED_ORIGINS = ['https://ggg-backend-ggtouchfish.app.secoder.net']
 # Application definition
 
 INSTALLED_APPS = [
