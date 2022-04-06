@@ -286,7 +286,7 @@ def passenger_order(request):
             errcode = 0
             return JsonResponse({'errcode': errcode})
         if check_time(order.id) == False and passenger.status > 1:  # 已匹配司机超时
-            cancel_order(passengername, 'passenger')
+            cancel_order(passengername, 'driver')
         # 司乘匹配 传入openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
         match_response = match(passengername, 'passenger')
         if match_response == -2:
