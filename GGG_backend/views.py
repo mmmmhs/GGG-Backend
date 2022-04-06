@@ -1,4 +1,5 @@
 from array import array
+from lib2to3.pgen2 import driver
 from unicodedata import name
 from jsonpath import jsonpath
 from ast import Return
@@ -11,6 +12,7 @@ from django.forms.models import model_to_dict
 from django.shortcuts import render
 # Create your views here.
 from django.http import HttpResponse, JsonResponse
+from pyparsing import Or
 import requests
 from GGG_backend.models import Driver, Passenger, SessionId, Order, Poi, Setting
 import secoder.settings
@@ -129,28 +131,35 @@ def match(openid, job):
         if job == "passenger":
             if len(driver_unmatched) > 0:
                 user = Passenger.objects.filter(name=openid).first()
-                order = user.myorder_id
+                order = Order.objects.filter(id=user.myorder_id).first()
+                if not order:
+                    return -2
                 order.mydriver = driver_unmatched[0]
                 order.match_time = time.time()
                 order.status = 1
-                Driver.objects.filter(
-                    name=driver_unmatched[0]).first().myorder_id = order
+                driver = Driver.objects.filter(name=driver_unmatched[0]).first()
+                driver.myorder_id = order
                 driver_matched.append(driver_unmatched.pop(0))
                 passenger_matched.append(passenger_unmatched.pop(0))
+                driver.save()
+                order.save()
                 return 0
             else:
                 return -1
         if job == "driver":
             if len(passenger_unmatched) > 0:
                 user = Driver.objects.filter(name=openid).first()
-                order = Passenger.objects.filter(
+                order_id = Passenger.objects.filter(
                     name=passenger_unmatched[0]).first().myorder_id
+                order = Order.objects.filter(id=order_id).first()    
                 order.mydriver = user.name
                 order.match_time = time.time()
                 user.myorder_id = order
                 order.status = 1
                 driver_matched.append(driver_unmatched.pop(0))
                 passenger_matched.append(passenger_unmatched.pop(0))
+                driver.save()
+                order.save()
                 return 0
             else:
                 return -1
@@ -160,7 +169,7 @@ def match(openid, job):
         logger.warning(e)
         return -2
 
-# 检查id对应订单是否超时
+# 检查id对应订单是否超时)
 # 轮询时调用
 
 
@@ -204,7 +213,10 @@ def cancel_order(openid, job):
             driver_unmatched.remove(cancel_user.name)
         cancel_user.myorder_id = -1
     influenced_user.status = 1
-    cancel_order.status = 0
+    cancel_user.status = 0
+    cancel_user.save()
+    order.save()
+    influenced_user.save()
 
 # 访问高德地图接口
 # 参数：poi, order 返回(path, distance)元组
@@ -248,6 +260,7 @@ def passenger_order(request):
         passenger.myorder_id = order.id
         order_id = order.id
         passenger_unmatched.append(passenger)  # 乘客加入未匹配池
+        passenger.save()
         return JsonResponse({'errcode': errcode, 'order': order_id})
 
     elif(request.method == 'GET'):  # 乘客询问订单状态
@@ -299,6 +312,7 @@ def get_order_info(request):  # 乘客获取当前订单信息
     path = god_ans[0]
     money = distance * poi.price_per_meter
     order.money = money
+    order.save()
     return JsonResponse({'errcode': errcode, 'driver_info': driver_info, 'passenger_info': passenger_info, 'path': path, 'money': money})
 
 
@@ -395,6 +409,9 @@ def passenger_pay(request):
         driver.myorder_id = -1
         order.end_time = time.time()
         order.status = 2
+        passenger.save()
+        driver.save()
+        order.save()
         return JsonResponse({'errcode': 0})
 
 
@@ -417,6 +434,7 @@ def driver_order(request):
             driver.status = 1
             driver_unmatched.append(driver.name)
             driver.position = int(origin)
+        driver.save()
         return JsonResponse({'errcode': errcode})
     if (request.method == 'GET'):
         try:
@@ -431,11 +449,7 @@ def driver_order(request):
             return JsonResponse({'errcode': errcode, 'order': orderid, 'destination': destination})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         if driver.status == 1:  # 司机闲着就给他匹配
-            matching = match(sessionId)
-            if matching == 0:  # 如果匹配上了
-                driver.status = 2
-            else:
-                driver.myorder_id = -1  # 没匹配上的话，打上一个不存在的订单标号
+            match(sessionId)
         if driver.status != 0 and driver.status != 1:  # 状态不是0或者1表明有订单，要么是unactive要么是在待匹配池子里
             errcode = 0
             orderid = driver.myorder_id
@@ -494,6 +508,8 @@ def driver_confirm_aboard(request):
                 return JsonResponse({'errcode': -1})
             driver.status = 4
             passenger.status = 4
+            driver.save()
+            passenger.save()
             return JsonResponse({'errcode': 0})
         except exception:
             return JsonResponse({'errcode': -1})
@@ -520,6 +536,8 @@ def driver_confirm_arrive(request):
                 return JsonResponse({'errcode': -1})
             driver.status = 5
             passenger.status = 5
+            driver.save()
+            passenger.save()
             if driver.name in driver_matched:
                 driver_matched.remove(driver.name)
             if passenger.name in passenger_matched:
