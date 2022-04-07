@@ -50,7 +50,7 @@ class Poi(models.Model):
                               max_digits=10, decimal_places=6)
     longitude = models.DecimalField(default=0, blank=True,
                               max_digits=10, decimal_places=6)
-    price_per_meter = models.IntegerField(default = 1)
+    price_per_meter = models.FloatField(default = 0.002)
     speed = models.FloatField(default = 1.0)
 
 class Setting(models.Model):

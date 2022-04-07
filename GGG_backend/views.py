@@ -374,10 +374,11 @@ def get_history_order_info(request):  # 司乘获取历史订单
         sessionId = SessionId.objects.filter(sessId=sess).first()
         user_job = sessionId.job
         user_name = sessionId.username
-        orders = []
+        orders_info = []
         if user_job == 'passenger':
             passenger = Passenger.objects.filter(name=user_name).first()
-            for order in Order:
+            orders = Order.objects.filter(mypassenger=user_name)
+            for order in orders:
                 if order.mypassenger == user_name:
                     passenger_info = order.mypassenger[0:5]
                     driver_info = order.mydriver[0:5]
@@ -394,12 +395,13 @@ def get_history_order_info(request):  # 司乘获取历史订单
                         status = 2
                     else:
                         status = 1
-                    orders.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time': start_time, 'end_time': end_time,
+                    orders_info.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time': start_time, 'end_time': end_time,
                                   'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status})
 
         elif user_job == 'driver':
-            for order in Order:
-                driver = Driver.objects.filter(name=user_name).first()
+            driver = Driver.objects.filter(name=user_name).first()
+            orders = Order.objects.filter(mypassenger=user_name)
+            for order in orders:
                 if order.mydriver == user_name:
                     passenger_info = order.mypassenger[0:5]
                     driver_info = order.mydriver[0:5]
@@ -416,9 +418,9 @@ def get_history_order_info(request):  # 司乘获取历史订单
                         status = 2
                     else:
                         status = 1
-                    orders.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time': start_time, 'end_time': end_time,
+                    orders_info.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time': start_time, 'end_time': end_time,
                                   'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status})
-        return JsonResponse({'orders': orders})
+        return JsonResponse({'orders': orders_info})
 
 
 def passenger_pay(request):
