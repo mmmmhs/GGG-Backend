@@ -1,6 +1,6 @@
-export  DJANGO_SUPERUSER_NAME ="admin"
-export  DJANGO_SUPERUSER_EMAIL ="admin@my.company"
-export  DJANGO_SUPERUSER_PASSWORD ="adminpass"
+export  DJANGO_SUPERUSER_NAME="admin"
+export  DJANGO_SUPERUSER_EMAIL="admin@my.company"
+export  DJANGO_SUPERUSER_PASSWORD="adminpass"
 
 python manage.py makemigrations
 python manage.py migrate
