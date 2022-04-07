@@ -5,5 +5,6 @@ python manage.py makemigrations
 python manage.py migrate
 python manage.py makemigrations
 python manage.py migrate
+python manage.py collectstatic 
 python manage.py createsuperuser --noinput --username=$DJANGO_SUPERUSER_USERNAME
 daphne secoder.asgi:application -b 0.0.0.0 -p  $BIND
