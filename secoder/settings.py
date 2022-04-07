@@ -33,6 +33,8 @@ ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = ['https://ggg-backend-ggtouchfish.app.secoder.net']
 # Application definition
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 INSTALLED_APPS = [
 	# 'django_crontab'
