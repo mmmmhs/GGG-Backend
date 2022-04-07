@@ -400,7 +400,7 @@ def get_history_order_info(request):  # 司乘获取历史订单
 
         elif user_job == 'driver':
             driver = Driver.objects.filter(name=user_name).first()
-            orders = Order.objects.filter(mypassenger=user_name)
+            orders = Order.objects.filter(mydriver=user_name)
             for order in orders:
                 if order.mydriver == user_name:
                     passenger_info = order.mypassenger[0:5]
