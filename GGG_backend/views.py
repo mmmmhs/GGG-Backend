@@ -331,12 +331,12 @@ def get_order_info(request):  # 乘客获取当前订单信息
         return HttpResponse("error:{}".format(e), status=405)
     sessionId = SessionId.objects.filter(sessId=sess).first()
     passengername = sessionId.username
+    errcode = -1
     order = Order.objects.filter(id=order_id).first()
     passenger = Passenger.objects.filter(name=passengername).first()
-    errcode = passenger.status
     if not order or not passenger:
-        errcode = -1
         return JsonResponse({'errcode': errcode})
+    errcode = passenger.status
     drivername = order.mydriver
     driver_info = drivername[0:5]  # 司机前五位
     passenger_info = passengername[0:5]  # 乘客前五位
@@ -631,3 +631,19 @@ def driver_cancel(request):
         except Exception as e:
             logger.error(e, exc_info=True)
             return JsonResponse({'errcode': -1})
+
+def check_session_id(request):
+    if(request.method == 'GET'):
+        sess = request.GET['sess']
+        user = SessionId.objects.filter(sessId=sess).first()
+        job = request.GET['job']
+        if not user or user.job != job:
+            return JsonResponse({'errcode': -1, 'order': -1})
+        order = -1
+        if job == "passenger":
+            order = Passenger.objects.filter(
+                name=user.username).first().myorder_id
+        elif job == "driver":
+            order = Driver.objects.filter(
+                name=user.username).first().myorder_id
+        return JsonResponse({'errcode': 0, 'order': order})

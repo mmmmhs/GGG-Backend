@@ -18,4 +18,5 @@ urlpatterns = [
     path('get_history_order_info',views.get_history_order_info,name='get_history_order_info'),
     path('passenger_pay',views.passenger_pay,name='passenger_pay'),
     path('get_order_money',views.get_order_money,name='get_order_money'),
+    path('check_session_id', views.check_session_id, name='check_session_id'),
 ]
