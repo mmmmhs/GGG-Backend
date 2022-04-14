@@ -116,7 +116,7 @@ def pois(request):
                 array = []
                 for i in poi_list:
                     array.append(model_to_dict(
-                        Poi.objects.filter(id=i).first(), fields=['id', 'name', 'latitude', 'longitude']))
+                        Poi.objects.filter(id=i).first(), fields=['id', 'name', 'latitude', 'longitude', 'price_per_meter', 'speed']))
                 return JsonResponse({'errcode': 0, 'pois': array})
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -144,6 +144,7 @@ def match(openid, job):
                 passenger_matched.append(passenger_unmatched.pop(0))
                 driver.status = 2
                 user.status = 2
+                user.save()
                 driver.save()
                 order.save()
                 return 0
@@ -247,7 +248,6 @@ def cancel_order(openid, job):
 def get_path(poi, order):
     response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
                             '&origin='+str(poi.longitude)+','+str(poi.latitude)+'&destination='+str(order.dest_lon)+','+str(order.dest_lat)+'&show_fields=polyline')
-
     response = response.json()
     distance = float([match.value for match in parse(
         '$.route.paths[0].distance').find(response)][0])
@@ -290,6 +290,7 @@ def passenger_order(request):
         passenger.myorder_id = order.id
         order_id = order.id
         passenger_unmatched.append(passenger.name)  # 乘客加入未匹配池
+        passenger.position = int(origin)
         passenger.save()
         return JsonResponse({'errcode': errcode, 'order': order_id})
 
@@ -318,6 +319,7 @@ def passenger_order(request):
         match_response = match(passengername, 'passenger')
         if match_response == -2:
             return JsonResponse({'errcode': errcode})
+        passenger = Passenger.objects.filter(name=passengername).first()
         errcode = passenger.status
         return JsonResponse({'errcode': errcode})
 
@@ -347,7 +349,8 @@ def get_order_info(request):  # 乘客获取当前订单信息
     money = distance * poi.price_per_meter
     order.money = money
     order.save()
-    dest = {'name': order.dest_name, 'latitude': order.dest_lat, 'longitude': order.dest_lon}
+    dest = {'name': order.dest_name,
+            'latitude': order.dest_lat, 'longitude': order.dest_lon}
     return JsonResponse({'errcode': errcode, 'driver_info': driver_info, 'passenger_info': passenger_info, 'path': path, 'money': money, 'poi': order.departure, 'dest': dest})
 
 
@@ -493,7 +496,8 @@ def driver_order(request):
             return JsonResponse({'errcode': errcode, 'order': orderid, 'dest': destination})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         if driver.status == 1:  # 司机闲着就给他匹配
-            match(sessionId, "driver")
+            match(user.username, "driver")
+        driver = Driver.objects.filter(name=user.username).first()
         if driver.status != 0 and driver.status != 1:  # 状态不是0或者1表明有订单，要么是unactive要么是在待匹配池子里
             errcode = 0
             orderid = driver.myorder_id
@@ -631,6 +635,7 @@ def driver_cancel(request):
         except Exception as e:
             logger.error(e, exc_info=True)
             return JsonResponse({'errcode': -1})
+
 
 def check_session_id(request):
     if(request.method == 'GET'):
