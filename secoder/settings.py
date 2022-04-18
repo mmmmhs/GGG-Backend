@@ -18,15 +18,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 APPID = "wx7dad48f5b0c6cfaf"
 
 APPSECRET = "ab4fbc2ecaaf6b8906ad20215e9085ff"
-# Quick-start development settings - unsuitable for production
+# Quick-start development settings - unsuitable for Production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
+# SECURITY WARNING: keep the secret key used in Production secret!
 SECRET_KEY = 'django-insecure-#rk4h^d7)d(dvyfmc5^5ebq*la^e$$5%mb1=aia^&i#vlswfjf'
 
 GOD_KEY = 'c4c8e4d3db81c9d52c10884a0bf3d682'
 
-# SECURITY WARNING: don't run with debug turned on in production!
+# SECURITY WARNING: don't run with debug turned on in Production!
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']

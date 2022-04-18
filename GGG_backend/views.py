@@ -6,7 +6,7 @@ from django.forms.models import model_to_dict
 # Create your views here.
 from django.http import HttpResponse, JsonResponse
 import requests
-from GGG_backend.models import Driver, Passenger, SessionId, Order, Poi, Setting
+from GGG_backend.models import Driver, Passenger, SessionId, Order, Product, Setting
 import secoder.settings
 import random
 import string
@@ -17,11 +17,18 @@ formatter = logging.Formatter('%(name)s - %(lineno)d - %(message)s')
 console = logging.StreamHandler()
 console.setFormatter(formatter)
 
-passenger_unmatched = []  # 待匹配乘客池子
-driver_unmatched = []  # 待匹配司机池子
-passenger_matched = []  # 已匹配乘客池子
-driver_matched = []  # 已匹配司机池子
+match_list = {}
+""" 
+{id : { passenger_unmatched : [],  # 待匹配乘客池子 
+        driver_unmatched : [],  # 待匹配司机池子
+        passenger_matched : [],  # 已匹配乘客池子
+        driver_matched : [] # 已匹配司机池子
+      }
+}
 # openid
+"""
+driver_position = {}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
+
 
 
 def index(request):
@@ -104,30 +111,63 @@ def reg(request):
             return JsonResponse({'errcode': -2})
 
 
-def pois(request):
+def product_list(request):
     if(request.method == 'GET'):
         try:
             sess = request.GET['sess']
             if not SessionId.objects.filter(sessId=sess).first():
-                return JsonResponse({'errcode': -2, 'pois': []})
+                return JsonResponse({'errcode': -2, 'product': []})
             else:
-                poi_str = Setting.objects.filter(id=1).first().pois
-                poi_list = poi_str.split(',')
+                product_str = Setting.objects.filter(id=1).first().products
+                product_list = product_str.split(',')
                 array = []
-                for i in poi_list:
+                for i in product_list:
                     array.append(model_to_dict(
-                        Poi.objects.filter(id=i).first(), fields=['id', 'name', 'latitude', 'longitude', 'price_per_meter', 'speed']))
-                return JsonResponse({'errcode': 0, 'pois': array})
+                        Product.objects.filter(id=i).first(), fields=['id', 'name', 'price_per_meter', 'speed']))
+                return JsonResponse({'errcode': 0, 'product': array})
         except Exception as e:
             logger.error(e, exc_info=True)
             return HttpResponse("error:{}".format(e), status=405)
 
-# 司乘匹配 传入openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
+
+def driver_choose_product(request):
+    if(request.method == 'POST'):
+        reqjson = json.loads(request.body)
+        sess = reqjson['sess']
+        product = reqjson['product']
+        user = SessionId.objects.filter(sessId=sess).first()
+        if not user or user.job != 'driver':
+            return JsonResponse({'errcode': -1})
+        driver = Driver.objects.filter(name=user.username).first()
+        if not driver:
+            return JsonResponse({'errcode': -1})
+        driver.product = product
+        driver.save()
+        return JsonResponse({'errcode': 0})
+
+
+# 乘客/司机发单时调用
+# 传入 独乘产品id, openid, job
+# (若match_list无该独乘产品池子则创建之,并)加入待匹配池子
+def init_match_list(product, name, job):
+    if not product in match_list:
+        match_list[product] = {'passenger_unmatched': [], 'driver_unmatched': [],
+                               'passenger_matched': [], 'driver_matched': []}
+    if job == "passenger":
+        match_list[product]['passenger_unmatched'].append(name)
+    elif job == "driver":
+        match_list[product]['driver_unmatched'].append(name)
+
+# 司乘匹配 传入 独乘产品id openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
 # 修改order.status mydriver
 
 
-def match(openid, job):
+def match(product, openid, job):
     try:
+        driver_unmatched = match_list[product]['driver_unmatched']
+        driver_matched = match_list[product]['driver_matched']
+        passenger_unmatched = match_list[product]['passenger_unmatched']
+        passenger_matched = match_list[product]['passenger_matched']
         if job == "passenger":
             if len(driver_unmatched) > 0:
                 user = Passenger.objects.filter(name=openid).first()
@@ -178,7 +218,7 @@ def match(openid, job):
         logger.error(e, exc_info=True)
         return -2
 
-# 检查id对应订单是否超时)
+# 检查id对应订单是否超时
 # 轮询时调用
 
 
@@ -194,9 +234,13 @@ def check_time(order_id):
 # 修改status myorder_id 改变池子
 
 
-def cancel_order(openid, job):
+def cancel_order(product, openid, job):
     cancel_user, influenced_user, order = None, None, None
     logger.info(openid+' '+job)
+    driver_unmatched = match_list[product]['driver_unmatched']
+    driver_matched = match_list[product]['driver_matched']
+    passenger_unmatched = match_list[product]['passenger_unmatched']
+    passenger_matched = match_list[product]['passenger_matched']
     if job == "passenger":
         cancel_user = Passenger.objects.filter(name=openid).first()
         if cancel_user.name in passenger_unmatched:
@@ -242,12 +286,12 @@ def cancel_order(openid, job):
     order.delete()
 
 # 访问高德地图接口
-# 参数：poi, order 返回(path, distance)元组
+# 参数：product, order 返回(path, distance)元组
 
 
-def get_path(poi, order):
+def get_path(order):
     response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
-                            '&origin='+str(poi.longitude)+','+str(poi.latitude)+'&destination='+str(order.dest_lon)+','+str(order.dest_lat)+'&show_fields=polyline')
+                            '&origin='+str(order.origin_lon)+','+str(order.origin_lat)+'&destination='+str(order.dest_lon)+','+str(order.dest_lat)+'&show_fields=polyline')
     response = response.json()
     distance = float([match.value for match in parse(
         '$.route.paths[0].distance').find(response)][0])
@@ -266,14 +310,11 @@ def get_path(poi, order):
 
 def passenger_order(request):
     if (request.method == 'POST'):  # 乘客发起订单
-        try:
-            reqjson = json.loads(request.body)
-            sess = reqjson['sess']
-            origin = reqjson['origin']
-            dest = reqjson['dest']  # name latitude longitude
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return HttpResponse("error:{}".format(e), status=405)
+        reqjson = json.loads(request.body)
+        sess = reqjson['sess']
+        origin = reqjson['origin']
+        dest = reqjson['dest']  # name latitude longitude
+        product = reqjson['product']
         sessionId = SessionId.objects.filter(sessId=sess).first()
         passengername = sessionId.username
         passenger = Passenger.objects.filter(name=passengername).first()
@@ -285,26 +326,27 @@ def passenger_order(request):
             errcode = -1
             return JsonResponse({'errcode': errcode})
         passenger.status = 1  # 乘客状态0->1
-        order = Order.objects.create(mypassenger=passengername, departure=origin, dest_name=dest['name'],
-                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'])  # 创建订单
+        passenger.lat = origin['latitude']
+        passenger.lon = origin['longitude']
+        order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longtitude'], dest_name=dest['name'],
+                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product)  # 创建订单
         passenger.myorder_id = order.id
         order_id = order.id
-        passenger_unmatched.append(passenger.name)  # 乘客加入未匹配池
-        passenger.position = int(origin)
+        init_match_list(product, passengername, 'passenger')
+        match(product, passengername, 'passenger')
+        order.save()
         passenger.save()
         return JsonResponse({'errcode': errcode, 'order': order_id})
 
     elif(request.method == 'GET'):  # 乘客询问订单状态
-        try:
-            sess = request.GET['sess']
-            order_id = request.GET['order']
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return HttpResponse("error:{}".format(e), status=405)
+
+        sess = request.GET['sess']
+        order_id = request.GET['order']
         sessionId = SessionId.objects.filter(sessId=sess).first()
         passengername = sessionId.username
         passenger = Passenger.objects.filter(name=passengername).first()
         order = Order.objects.filter(id=order_id).first()
+        product = order.product
         errcode = -10
         if not passenger:
             return JsonResponse({'errcode': errcode})
@@ -315,22 +357,19 @@ def passenger_order(request):
             order = Order.objects.filter(id=passenger.myorder_id).first()
             driver = Driver.objects.filter(myorder_id=order.id).first()
             cancel_order(driver.name, 'driver')
-        # 司乘匹配 传入openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
-        match_response = match(passengername, 'passenger')
-        if match_response == -2:
-            return JsonResponse({'errcode': errcode})
         passenger = Passenger.objects.filter(name=passengername).first()
         errcode = passenger.status
-        return JsonResponse({'errcode': errcode})
+        drivername = order.mydriver
+        driver = Driver.objects.filter(name=drivername)
+        if not driver:
+            return JsonResponse({'errcode': errcode})
+        return JsonResponse({'errcode': errcode, 'driver': {'latitude': driver_position[order_id]['latitude'], 'longitude': driver_position[order_id]['longitude']}})
 
 
 def get_order_info(request):  # 乘客获取当前订单信息
-    try:
-        sess = request.GET['sess']
-        order_id = request.GET['order']
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return HttpResponse("error:{}".format(e), status=405)
+
+    sess = request.GET['sess']
+    order_id = request.GET['order']
     sessionId = SessionId.objects.filter(sessId=sess).first()
     passengername = sessionId.username
     errcode = -1
@@ -342,25 +381,24 @@ def get_order_info(request):  # 乘客获取当前订单信息
     drivername = order.mydriver
     driver_info = drivername[0:5]  # 司机前五位
     passenger_info = passengername[0:5]  # 乘客前五位
-    poi = Poi.objects.filter(id=order.departure).first()
-    god_ans = get_path(poi, order)
+    product = Product.objects.filter(id=order.product).first()
+    god_ans = get_path(order)
     distance = god_ans[1]
     path = god_ans[0]
-    money = distance * poi.price_per_meter
+    money = distance * product.price_per_meter
     order.money = money
     order.save()
+    origin = {'name': order.origin_name,
+              'latitude': order.origin_lat, 'longitude': order.longitude}
     dest = {'name': order.dest_name,
             'latitude': order.dest_lat, 'longitude': order.dest_lon}
-    return JsonResponse({'errcode': errcode, 'driver_info': driver_info, 'passenger_info': passenger_info, 'path': path, 'money': money, 'poi': order.departure, 'dest': dest})
+    return JsonResponse({'errcode': errcode, 'driver_info': driver_info, 'passenger_info': passenger_info, 'path': path, 'money': money, 'origin': origin, 'dest': dest})
 
 
 def get_order_money(request):  # 乘客获取当前订单钱数
-    try:
-        sess = request.GET['sess']
-        order_id = request.GET['order']
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return HttpResponse("error:{}".format(e), status=405)
+
+    sess = request.GET['sess']
+    order_id = request.GET['order']
     sessionId = SessionId.objects.filter(sessId=sess).first()
     passengername = sessionId.username
     order = Order.objects.filter(id=order_id).first()
@@ -372,11 +410,7 @@ def get_order_money(request):  # 乘客获取当前订单钱数
 
 def get_history_order_info(request):  # 司乘获取历史订单
     if (request.method == 'GET'):
-        try:
-            sess = request.GET['sess']
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return HttpResponse("error:{}".format(e), status=405)
+        sess = request.GET['sess']
         sessionId = SessionId.objects.filter(sessId=sess).first()
         user_job = sessionId.job
         user_name = sessionId.username
@@ -389,8 +423,7 @@ def get_history_order_info(request):  # 司乘获取历史订单
                     passenger_info = order.mypassenger[0:5]
                     driver_info = order.mydriver[0:5]
                     money = order.money
-                    poi = Poi.objects.filter(id=order.departure).first()
-                    start_location = poi.name
+                    start_location = order.origin_name
                     start_time = order.start_time
                     end_time = order.end_time
                     end_location = order.dest_name
@@ -412,8 +445,7 @@ def get_history_order_info(request):  # 司乘获取历史订单
                     passenger_info = order.mypassenger[0:5]
                     driver_info = order.mydriver[0:5]
                     money = order.money
-                    poi = Poi.objects.filter(id=order.departure).first()
-                    start_location = poi.name
+                    start_location = order.origin_name
                     start_time = order.start_time
                     end_time = order.end_time
                     end_location = order.dest_name
@@ -467,7 +499,6 @@ def driver_order(request):
             sessionId = reqjson['sess']
             origin = reqjson['origin']
         except Exception as e:
-            logger.error(e, exc_info=True)
             return HttpResponse("error:{}".format(e), status=405)
         user = SessionId.objects.filter(sessId=sessionId).first()  # 找到对应user
         errcode = -1
@@ -478,15 +509,17 @@ def driver_order(request):
         if driver.status == 0:  # 0代表没有订单
             errcode = 0
             driver.status = 1
-            driver_unmatched.append(driver.name)
-            driver.position = int(origin)
+            init_match_list(driver.product, driver.name, "driver")
+            driver.lat = origin['latitude']
+            driver.lon = origin['longitude']
+            match(user.username, "driver")  # 为司机进行匹配
         driver.save()
         return JsonResponse({'errcode': errcode})
     if (request.method == 'GET'):
         try:
             sessionId = request.GET['sess']
+            position = request.GET['position']
         except Exception as e:
-            logger.error(e, exc_info=True)
             return HttpResponse("error:{}".format(e), status=405)
         user = SessionId.objects.filter(sessId=sessionId).first()  # 找到对应user
         orderid = 0
@@ -495,17 +528,17 @@ def driver_order(request):
             errcode = -10
             return JsonResponse({'errcode': errcode, 'order': orderid, 'dest': destination})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
-        if driver.status == 1:  # 司机闲着就给他匹配
-            match(user.username, "driver")
-        driver = Driver.objects.filter(name=user.username).first()
         if driver.status != 0 and driver.status != 1:  # 状态不是0或者1表明有订单，要么是unactive要么是在待匹配池子里
             errcode = 0
             orderid = driver.myorder_id
             order = Order.objects.filter(id=orderid).first()
+            driver_position[orderid] = position
+            origin = {'name': order.origin_name,
+                      'latitude': order.origin_lat, 'longitude': order.origin_lon}
             destination = {'name': order.dest_name,
                            'latitude': order.dest_lat, 'longitude': order.dest_lon}
         errcode = driver.status
-        return JsonResponse({'errcode': errcode, 'order': orderid, 'dest': destination})
+        return JsonResponse({'errcode': errcode, 'order': orderid, 'passenger_loc': origin, 'dest': destination})
 
 
 def driver_get_order(request):
@@ -526,15 +559,11 @@ def driver_get_order(request):
             passenger = Passenger.objects.filter(
                 name=order.mypassenger).first()
             info = passenger.name[0:5]
-            poi = Poi.objects.filter(id=order.departure).first()
-            path, distance = get_path(poi, order)
-            speed = poi.speed
-            esti_time = distance / speed
             passenger.status = 3
             driver.status = 3
             passenger.save()
             driver.save()
-            return JsonResponse({'errcode': 0, 'info': info, 'path': path, 'time': esti_time})
+            return JsonResponse({'errcode': 0, 'info': info})
         except Exception as e:
             logger.error(e, exc_info=True)
             return HttpResponse("error:{}".format(e), status=405)
@@ -547,30 +576,34 @@ def driver_confirm_aboard(request):
             sess = reqjson['sess']
             user = SessionId.objects.filter(sessId=sess).first()
             if not user or user.job != 'driver':
-                return JsonResponse({'errcode': -1})
+                return JsonResponse({'errcode': -1, 'path': []})
                 # sessionid需存在 & 是司机
             driver = Driver.objects.filter(name=user.username).first()
             if not driver or driver.myorder_id == -1:
-                return JsonResponse({'errcode': -1})
+                return JsonResponse({'errcode': -1, 'path': []})
                 # 对应driver存在
             orderid = reqjson['order']
             order = Order.objects.filter(id=orderid).first()
             if not order:
-                return JsonResponse({'errcode': -1})
+                return JsonResponse({'errcode': -1, 'path': []})
                 # order存在
             passenger = Passenger.objects.filter(
                 name=order.mypassenger).first()
             if not passenger:
-                return JsonResponse({'errcode': -1})
+                return JsonResponse({'errcode': -1, 'path': []})
                 # order存储passenger存在
             driver.status = 4
             passenger.status = 4
             driver.save()
             passenger.save()
-            return JsonResponse({'errcode': 0})
+            product = Product.objects.filter(id=passenger.product).first()
+            path, distance = get_path(order)
+            speed = product.speed
+            esti_time = distance / speed
+            return JsonResponse({'errcode': 0, 'path': path, 'time': esti_time})
         except exception as e:
             logger.error(e, exc_info=True)
-            return JsonResponse({'errcode': -1})
+            return JsonResponse({'errcode': -1, 'path': []})
 
 
 def driver_confirm_arrive(request):
@@ -592,6 +625,8 @@ def driver_confirm_arrive(request):
                 name=order.mypassenger).first()
             if not passenger:
                 return JsonResponse({'errcode': -1})
+            driver_matched = match_list[passenger.product]['driver_matched']
+            passenger_matched = match_list[passenger.product]['passenger_matched']
             driver.status = 5
             passenger.status = 5
             driver.save()
@@ -615,7 +650,10 @@ def passenger_cancel(request):
             if not user or user.job != 'passenger':
                 return JsonResponse({'errcode': -1})
                 # sessionid存在且为乘客
-            cancel_order(user.username, "passenger")
+            passenger = Passenger.objects.filter(name=user.username).first()
+            if not passenger:
+                return JsonResponse({'errcode': -1})
+            cancel_order(passenger.product, user.username, "passenger")
             return JsonResponse({'errcode': 0})
         except exception as e:
             logger.error(e, exc_info=True)
@@ -630,7 +668,10 @@ def driver_cancel(request):
             user = SessionId.objects.filter(sessId=sess).first()
             if not user or user.job != 'driver':
                 return JsonResponse({'errcode': -1})
-            cancel_order(user.username, "driver")
+            driver = Driver.objects.filter(name=user.username).first()
+            if not driver:
+                return JsonResponse({'errcode': -1})
+            cancel_order(driver.product, user.username, "driver")
             return JsonResponse({'errcode': 0})
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -649,6 +690,12 @@ def check_session_id(request):
             order = Passenger.objects.filter(
                 name=user.username).first().myorder_id
         elif job == "driver":
-            order = Driver.objects.filter(
-                name=user.username).first().myorder_id
-        return JsonResponse({'errcode': 0, 'order': order})
+            driver = Driver.objects.filter(name=user.username).first()
+            if not driver:
+                return JsonResponse({'errcode': -1, 'order': -1})
+            order = driver.myorder_id
+            product = Product.objects.filter(id=driver.product)
+            if not product:
+                return JsonResponse({'errcode': -1, 'order': -1})
+            product_dict = model_to_dict(product)    
+        return JsonResponse({'errcode': 0, 'order': order, 'product': product_dict})
