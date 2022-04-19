@@ -213,8 +213,9 @@ class GGG_test(TestCase):
         # 司机接单
         order = Order.objects.filter(mypassenger='arui').first()
         order_id = order.id
+        position = {'latitude': 114, 'longitude': 514}
         response = self.client.post(
-            '/api/driver_get_order', data={'sess': "963", 'order': order_id}, content_type='application/json')
+            '/api/driver_get_order', data={'sess': "963", 'order': order_id, 'position': position}, content_type='application/json')
         errcode = response.json()['errcode']
         info = response.json()['info']
         self.assertEqual(errcode, 0)

@@ -3,7 +3,6 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.index, name='index'),
     path('login', views.login, name = 'login'),
     path('reg', views.reg,name = 'reg'),
 	path('product_list', views.product_list, name = 'product_list'),
@@ -20,4 +19,5 @@ urlpatterns = [
     path('get_order_money',views.get_order_money,name='get_order_money'),
     path('check_session_id', views.check_session_id, name='check_session_id'),
     path('driver_choose_product', views.driver_choose_product, name='driver_choose_product'),
+    path('get_former', views.get_former, name='get_former'),
 ]
