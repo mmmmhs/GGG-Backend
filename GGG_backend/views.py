@@ -57,18 +57,17 @@ def login(request):
             job = reqjson['job']
         except Exception as e:
             logger.error(e, exc_info=True)
-            return JsonResponse({'errcode': 403, 'sess': "", 'order': 0})
+            return JsonResponse({'errcode': 403, 'sess': ""})
         data = get_wx_response(code)
         try:
             openID = data['openid']
             sessionID = get_3rd_session(data['session_key'], openID, job)
-            print(openID, job)
             try:
                 errorcode = data['errcode']
             except Exception:
                 errorcode = 0
             if errorcode != 0:
-                return JsonResponse({'errcode': errorcode, 'sess': "", 'order': 0})
+                return JsonResponse({'errcode': errorcode, 'sess': ""})
             if job == 'passenger':
                 user = Passenger.objects.filter(name=openID).first()
             elif job == 'driver':
@@ -81,14 +80,13 @@ def login(request):
                 SessionId.objects.create(
                     username=openID, sessId=sessionID, job=job)
             if not user:
-                return JsonResponse({'errcode': -10, 'sess': sessionID, 'order': 0})
-            orderid = user.myorder_id
+                return JsonResponse({'errcode': -10, 'sess': sessionID})
             res = JsonResponse(
-                {'errcode': errorcode, 'sess': sessionID, 'order': orderid})
+                {'errcode': errorcode, 'sess': sessionID})
             return res
         except Exception as e:
             logger.error(e, exc_info=True)
-            return JsonResponse({'errcode': 405, 'sess': "", 'order': 0})
+            return JsonResponse({'errcode': 405, 'sess': ""})
 
 
 def reg(request):
@@ -328,20 +326,20 @@ def passenger_order(request):
         passenger.status = 1  # 乘客状态0->1
         passenger.lat = origin['latitude']
         passenger.lon = origin['longitude']
-        order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longtitude'], dest_name=dest['name'],
+        passenger.product = product
+        order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
                                      dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product)  # 创建订单
         passenger.myorder_id = order.id
         order_id = order.id
+        passenger.save()
         init_match_list(product, passengername, 'passenger')
         match(product, passengername, 'passenger')
-        order.save()
-        passenger.save()
         return JsonResponse({'errcode': errcode, 'order': order_id})
 
     elif(request.method == 'GET'):  # 乘客询问订单状态
 
         sess = request.GET['sess']
-        order_id = request.GET['order']
+        order_id = int(request.GET['order'])
         sessionId = SessionId.objects.filter(sessId=sess).first()
         passengername = sessionId.username
         passenger = Passenger.objects.filter(name=passengername).first()
@@ -360,8 +358,8 @@ def passenger_order(request):
         passenger = Passenger.objects.filter(name=passengername).first()
         errcode = passenger.status
         drivername = order.mydriver
-        driver = Driver.objects.filter(name=drivername)
-        if not driver:
+        driver = Driver.objects.filter(name=drivername).first()
+        if not driver or driver.status <= 2 or passenger.status <= 2:
             return JsonResponse({'errcode': errcode})
         return JsonResponse({'errcode': errcode, 'driver': {'latitude': driver_position[order_id]['latitude'], 'longitude': driver_position[order_id]['longitude']}})
 
@@ -509,21 +507,23 @@ def driver_order(request):
         if driver.status == 0:  # 0代表没有订单
             errcode = 0
             driver.status = 1
-            init_match_list(driver.product, driver.name, "driver")
             driver.lat = origin['latitude']
             driver.lon = origin['longitude']
-            match(user.username, "driver")  # 为司机进行匹配
-        driver.save()
+            driver.save()
+            init_match_list(driver.product, driver.name, "driver")
+            match(driver.product, driver.name, "driver")  # 为司机进行匹配
         return JsonResponse({'errcode': errcode})
     if (request.method == 'GET'):
         try:
             sessionId = request.GET['sess']
-            position = request.GET['position']
+            latitude = request.GET['latitude']
+            longitude = request.GET['longitude']
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
         user = SessionId.objects.filter(sessId=sessionId).first()  # 找到对应user
         orderid = 0
         destination = {}
+        origin = {}
         if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
             return JsonResponse({'errcode': errcode, 'order': orderid, 'dest': destination})
@@ -532,7 +532,8 @@ def driver_order(request):
             errcode = 0
             orderid = driver.myorder_id
             order = Order.objects.filter(id=orderid).first()
-            driver_position[orderid] = position
+            if driver.status >= 3:
+                driver_position[orderid] = {'latitude': latitude, 'longitude': longitude}
             origin = {'name': order.origin_name,
                       'latitude': order.origin_lat, 'longitude': order.origin_lon}
             destination = {'name': order.dest_name,
@@ -699,3 +700,29 @@ def check_session_id(request):
                 return JsonResponse({'errcode': -1, 'order': -1})
             product_dict = model_to_dict(product)    
         return JsonResponse({'errcode': 0, 'order': order, 'product': product_dict})
+
+def get_former(request):
+    if(request.method == 'GET'):
+        sess = request.GET['sess']
+        user = SessionId.objects.filter(sessId=sess).first()
+        job = request.GET['job']
+        if not user or user.job != job:
+            return JsonResponse({'errcode': -1, 'order': -1})
+        order = -1
+        default_product = {'id': -1, 'name': "请选择车型", 'price': 0}
+        if job == "passenger":
+            passenger = Passenger.objects.filter(name=user.username).first()
+            if not passenger:
+                return JsonResponse({'errcode': -1, 'order': -1})
+            order = passenger.myorder_id
+            return JsonResponse({'errcode': 0, 'order': order})  
+        elif job == "driver":
+            driver = Driver.objects.filter(name=user.username).first()
+            if not driver:
+                return JsonResponse({'errcode': -1, 'order': -1, 'product': default_product})
+            order = driver.myorder_id
+            product = Product.objects.filter(id=driver.product)
+            if not product:
+                return JsonResponse({'errcode': -1, 'order': -1, 'product': default_product})
+            product_dict = {'id': driver.product, 'name': product.name, 'price': product.price_per_meter * 1000}    
+            return JsonResponse({'errcode': 0, 'order': order, 'product': product_dict})
