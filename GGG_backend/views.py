@@ -259,6 +259,8 @@ def cancel_order(product, openid, job):
         if cancel_user.name in passenger_matched:
             passenger_matched.remove(cancel_user.name)
         influenced_user.myorder_id = -1
+        order.delete()
+        cancel_user.myorder_id = -1
     elif job == "driver":
         cancel_user = Driver.objects.filter(name=openid).first()
         if cancel_user.name in driver_unmatched:
@@ -278,11 +280,14 @@ def cancel_order(product, openid, job):
             passenger_unmatched.insert(0, influenced_user.name)
         if cancel_user.name in driver_matched:
             driver_matched.remove(cancel_user.name)
+        order.status = 0
+        order.mydriver = ""
+        order.save()
     cancel_user.status = 0
     cancel_user.save()
     influenced_user.status = 1
     influenced_user.save()
-    order.delete()
+            
 
 # 访问高德地图接口
 # 参数：product, order 返回(path, distance)元组
