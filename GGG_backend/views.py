@@ -33,7 +33,8 @@ match_list = {}
 }
 # openid
 """
-driver_position = {}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
+driver_position = {
+}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
 
    
 
@@ -76,15 +77,12 @@ def login(request):
                 user = Driver.objects.filter(name=openID).first()
             else:
                 user = None
-            tmp = SessionId.objects.filter(
-                username=openID).update(sessId=sessionID, job=job)
+            tmp = SessionId.objects.filter(username=openID).update(sessId=sessionID, job=job)
             if tmp == 0:
-                SessionId.objects.create(
-                    username=openID, sessId=sessionID, job=job)
+                SessionId.objects.create(username=openID, sessId=sessionID, job=job)
             if not user:
                 return JsonResponse({'errcode': -10, 'sess': sessionID})
-            res = JsonResponse(
-                {'errcode': errorcode, 'sess': sessionID})
+            res = JsonResponse({'errcode': errorcode, 'sess': sessionID})
             return res
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -124,7 +122,7 @@ def product_list(request):
                 for i in product_list:
                     product = Product.objects.filter(id=i).first()
                     array.append(
-                       {"id":i,"name":product.name,"price":product.price_per_meter*1000})
+                        {"id": i, "name": product.name, "price": product.price_per_meter*1000})
                 return JsonResponse({'errcode': 0, 'product': array})
         except Exception as e:
             logger.error(e, exc_info=True)
