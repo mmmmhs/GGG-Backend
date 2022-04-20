@@ -149,10 +149,6 @@ def driver_choose_product(request):
 # 传入 独乘产品id, openid, job
 # (若match_list无该独乘产品池子则创建之,并)加入待匹配池子
 def init_match_list(product, name, job):
-<<<<<<< HEAD
-=======
-    # mlogger.info(product,job)
->>>>>>> 491aff73a58d69fc58226cb1fa166811e9de2d1b
     if not product in match_list:
         match_list[product] = {'passenger_unmatched': [], 'driver_unmatched': [],
                                'passenger_matched': [], 'driver_matched': []}
@@ -316,10 +312,6 @@ def get_path(order):
 
 
 def passenger_order(request):
-<<<<<<< HEAD
-=======
-    # mlogger.info(match_list)
->>>>>>> 491aff73a58d69fc58226cb1fa166811e9de2d1b
     if (request.method == 'POST'):  # 乘客发起订单
         reqjson = json.loads(request.body)
         sess = reqjson['sess']
@@ -506,10 +498,6 @@ def passenger_pay(request):
 
 
 def driver_order(request):
-<<<<<<< HEAD
-=======
-    # mlogger.info(match_list)
->>>>>>> 491aff73a58d69fc58226cb1fa166811e9de2d1b
     if (request.method == 'POST'):  # POST方法，对应的是司机准备接单的环节
         try:
             reqjson = json.loads(request.body)
