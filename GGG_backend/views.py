@@ -33,7 +33,8 @@ match_list = {}
 }
 # openid
 """
-driver_position = {}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
+driver_position = {
+}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
 
    
 
@@ -76,15 +77,12 @@ def login(request):
                 user = Driver.objects.filter(name=openID).first()
             else:
                 user = None
-            tmp = SessionId.objects.filter(
-                username=openID).update(sessId=sessionID, job=job)
+            tmp = SessionId.objects.filter(username=openID).update(sessId=sessionID, job=job)
             if tmp == 0:
-                SessionId.objects.create(
-                    username=openID, sessId=sessionID, job=job)
+                SessionId.objects.create(username=openID, sessId=sessionID, job=job)
             if not user:
                 return JsonResponse({'errcode': -10, 'sess': sessionID})
-            res = JsonResponse(
-                {'errcode': errorcode, 'sess': sessionID})
+            res = JsonResponse({'errcode': errorcode, 'sess': sessionID})
             return res
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -124,7 +122,7 @@ def product_list(request):
                 for i in product_list:
                     product = Product.objects.filter(id=i).first()
                     array.append(
-                       {"id":i,"name":product.name,"price":product.price_per_meter*1000})
+                        {"id": i, "name": product.name, "price": product.price_per_meter * 1000})
                 return JsonResponse({'errcode': 0, 'product': array})
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -151,6 +149,10 @@ def driver_choose_product(request):
 # 传入 独乘产品id, openid, job
 # (若match_list无该独乘产品池子则创建之,并)加入待匹配池子
 def init_match_list(product, name, job):
+<<<<<<< HEAD
+=======
+    # mlogger.info(product,job)
+>>>>>>> 491aff73a58d69fc58226cb1fa166811e9de2d1b
     if not product in match_list:
         match_list[product] = {'passenger_unmatched': [], 'driver_unmatched': [],
                                'passenger_matched': [], 'driver_matched': []}
@@ -314,6 +316,10 @@ def get_path(order):
 
 
 def passenger_order(request):
+<<<<<<< HEAD
+=======
+    # mlogger.info(match_list)
+>>>>>>> 491aff73a58d69fc58226cb1fa166811e9de2d1b
     if (request.method == 'POST'):  # 乘客发起订单
         reqjson = json.loads(request.body)
         sess = reqjson['sess']
@@ -500,6 +506,10 @@ def passenger_pay(request):
 
 
 def driver_order(request):
+<<<<<<< HEAD
+=======
+    # mlogger.info(match_list)
+>>>>>>> 491aff73a58d69fc58226cb1fa166811e9de2d1b
     if (request.method == 'POST'):  # POST方法，对应的是司机准备接单的环节
         try:
             reqjson = json.loads(request.body)
@@ -741,5 +751,5 @@ def get_former(request):
             if not product:
                 return JsonResponse({'errcode': 0, 'order': -1, 'product': default_product})
             product_dict = {'id': driver.product, 'name': product.name,
-                            'price': product.price_per_meter*1000}
+                            'price': product.price_per_meter * 1000}
             return JsonResponse({'errcode': 0, 'order': order, 'product': product_dict})
