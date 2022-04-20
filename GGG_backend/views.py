@@ -13,9 +13,15 @@ import string
 import hashlib
 import logging
 logger = logging.getLogger('django')
+mlogger =logging.getLogger('matchlist')
 formatter = logging.Formatter('%(name)s - %(lineno)d - %(message)s')
 console = logging.StreamHandler()
 console.setFormatter(formatter)
+console1 = logging.FileHandler("demo.log")
+console1.setFormatter(formatter)
+mlogger.addHandler(console1)
+mlogger.setLevel(level = logging.DEBUG)
+
 
 match_list = {}
 """ 
@@ -29,6 +35,7 @@ match_list = {}
 """
 driver_position = {}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
 
+   
 
 def get_wx_response(code):
     response = requests.get("https://api.weixin.qq.com/sns/jscode2session?appid="+secoder.settings.APPID +
@@ -144,12 +151,13 @@ def driver_choose_product(request):
 # 传入 独乘产品id, openid, job
 # (若match_list无该独乘产品池子则创建之,并)加入待匹配池子
 def init_match_list(product, name, job):
+    mlogger.info(product,job)
     if not product in match_list:
         match_list[product] = {'passenger_unmatched': [], 'driver_unmatched': [],
                                'passenger_matched': [], 'driver_matched': []}
-    if job == "passenger":
+    if job == "passenger" and name not in match_list[product]['passenger_unmatched']:
         match_list[product]['passenger_unmatched'].append(name)
-    elif job == "driver":
+    elif job == "driver" and name not in match_list[product]['driver_unmatched']:
         match_list[product]['driver_unmatched'].append(name)
 
 # 司乘匹配 传入 独乘产品id openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
@@ -157,6 +165,7 @@ def init_match_list(product, name, job):
 
 
 def match(product, openid, job):
+    mlogger.log(product,job)
     try:
         driver_unmatched = match_list[product]['driver_unmatched']
         driver_matched = match_list[product]['driver_matched']
@@ -275,8 +284,8 @@ def cancel_order(product, openid, job):
             driver_matched.remove(cancel_user.name)
     cancel_user.status = 0
     cancel_user.save()
-    influenced_user.save()
     influenced_user.status = 1
+    influenced_user.save()
     order.delete()
 
 # 访问高德地图接口
@@ -303,6 +312,7 @@ def get_path(order):
 
 
 def passenger_order(request):
+    mlogger.info(match_list)
     if (request.method == 'POST'):  # 乘客发起订单
         reqjson = json.loads(request.body)
         sess = reqjson['sess']
@@ -328,8 +338,8 @@ def passenger_order(request):
         passenger.myorder_id = order.id
         order_id = order.id
         passenger.save()
-        init_match_list(product, passengername, 'passenger')
-        match(product, passengername, 'passenger')
+        init_match_list(passenger.product, passengername, 'passenger')
+        match(passenger.product, passengername, 'passenger')
         return JsonResponse({'errcode': errcode, 'order': order_id})
 
     elif(request.method == 'GET'):  # 乘客询问订单状态
@@ -350,7 +360,7 @@ def passenger_order(request):
         if check_time(order.id) == False and passenger.status == 2:  # 已匹配司机超时
             order = Order.objects.filter(id=passenger.myorder_id).first()
             driver = Driver.objects.filter(myorder_id=order.id).first()
-            cancel_order(driver.name, 'driver')
+            cancel_order(product, driver.name, 'driver')
         passenger = Passenger.objects.filter(name=passengername).first()
         errcode = passenger.status
         drivername = order.mydriver
@@ -487,6 +497,7 @@ def passenger_pay(request):
 
 
 def driver_order(request):
+    mlogger.info(match_list)
     if (request.method == 'POST'):  # POST方法，对应的是司机准备接单的环节
         try:
             reqjson = json.loads(request.body)
@@ -653,7 +664,11 @@ def passenger_cancel(request):
             passenger = Passenger.objects.filter(name=user.username).first()
             if not passenger:
                 return JsonResponse({'errcode': -1})
-            cancel_order(passenger.product, user.username, "passenger")
+            if passenger.myorder_id != -1:
+                cancel_order(passenger.product, user.username, "passenger")
+            else:
+                passenger.status = 0
+                passenger.save()    
             return JsonResponse({'errcode': 0})
         except exception as e:
             logger.error(e, exc_info=True)
@@ -671,7 +686,11 @@ def driver_cancel(request):
             driver = Driver.objects.filter(name=user.username).first()
             if not driver:
                 return JsonResponse({'errcode': -1})
-            cancel_order(driver.product, user.username, "driver")
+            if driver.myorder_id != -1:
+                cancel_order(driver.product, user.username, "driver")
+            else:
+                driver.status = 0
+                driver.save()    
             return JsonResponse({'errcode': 0})
         except Exception as e:
             logger.error(e, exc_info=True)
