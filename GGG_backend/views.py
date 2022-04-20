@@ -122,7 +122,7 @@ def product_list(request):
                 for i in product_list:
                     product = Product.objects.filter(id=i).first()
                     array.append(
-                        {"id": i, "name": product.name, "price": product.price_per_meter*1000})
+                        {"id": i, "name": product.name, "price": product.price_per_meter * 1000})
                 return JsonResponse({'errcode': 0, 'product': array})
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -149,7 +149,7 @@ def driver_choose_product(request):
 # 传入 独乘产品id, openid, job
 # (若match_list无该独乘产品池子则创建之,并)加入待匹配池子
 def init_match_list(product, name, job):
-    mlogger.info(product,job)
+    # mlogger.info(product,job)
     if not product in match_list:
         match_list[product] = {'passenger_unmatched': [], 'driver_unmatched': [],
                                'passenger_matched': [], 'driver_matched': []}
@@ -310,7 +310,7 @@ def get_path(order):
 
 
 def passenger_order(request):
-    mlogger.info(match_list)
+    # mlogger.info(match_list)
     if (request.method == 'POST'):  # 乘客发起订单
         reqjson = json.loads(request.body)
         sess = reqjson['sess']
@@ -391,7 +391,7 @@ def get_order_info(request):  # 乘客获取当前订单信息
     order.money = money
     order.save()
     origin = {'name': order.origin_name,
-              'latitude': order.origin_lat, 'longitude': order.longitude}
+              'latitude': order.origin_lat, 'longitude': order.origin_lon}
     dest = {'name': order.dest_name,
             'latitude': order.dest_lat, 'longitude': order.dest_lon}
     return JsonResponse({'errcode': errcode, 'driver_info': driver_info, 'passenger_info': passenger_info, 'path': path, 'money': money, 'origin': origin, 'dest': dest})
@@ -495,7 +495,7 @@ def passenger_pay(request):
 
 
 def driver_order(request):
-    mlogger.info(match_list)
+    # mlogger.info(match_list)
     if (request.method == 'POST'):  # POST方法，对应的是司机准备接单的环节
         try:
             reqjson = json.loads(request.body)
@@ -737,5 +737,5 @@ def get_former(request):
             if not product:
                 return JsonResponse({'errcode': -1, 'order': -1, 'product': default_product})
             product_dict = {'id': driver.product, 'name': product.name,
-                            'price': product.price_per_meter*1000}
+                            'price': product.price_per_meter * 1000}
             return JsonResponse({'errcode': 0, 'order': order, 'product': product_dict})
