@@ -115,8 +115,9 @@ def product_list(request):
                 product_list = product_str.split(',')
                 array = []
                 for i in product_list:
-                    array.append(model_to_dict(
-                        Product.objects.filter(id=i).first(), fields=['id', 'name', 'price_per_meter', 'speed']))
+                    product = Product.objects.filter(id=i).first()
+                    array.append(
+                       {"id":i,"name":product.name,"price":product.price_per_meter*1000})
                 return JsonResponse({'errcode': 0, 'product': array})
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -715,9 +716,9 @@ def get_former(request):
             if not driver:
                 return JsonResponse({'errcode': -1, 'order': -1, 'product': default_product})
             order = driver.myorder_id
-            product = Product.objects.filter(id=driver.product)
+            product = Product.objects.filter(id=driver.product).first()
             if not product:
                 return JsonResponse({'errcode': -1, 'order': -1, 'product': default_product})
             product_dict = {'id': driver.product, 'name': product.name,
-                            'price': product.price_per_meter * 1000}
+                            'price': product.price_per_meter*1000}
             return JsonResponse({'errcode': 0, 'order': order, 'product': product_dict})
