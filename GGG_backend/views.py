@@ -36,7 +36,18 @@ match_list = {}
 driver_position = {
 }  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
 
-   
+def start_pressure_test(request):
+    if request.method == 'POST':
+        i = 0
+        while i < 100:
+            str1 = 'p'+str(i)
+            str2 = 'd'+str(i)
+            Passenger.objects.create(name=str1)
+            Driver.objects.create(name=str2)
+            SessionId.objects.create(sessId=str1, username=str1, job="passenger")
+            SessionId.objects.create(sessId=str2, username=str2, job="driver")
+            i = i + 1
+        return JsonResponse({'errcode': 0})    
 
 def get_wx_response(code):
     response = requests.get("https://api.weixin.qq.com/sns/jscode2session?appid="+secoder.settings.APPID +
