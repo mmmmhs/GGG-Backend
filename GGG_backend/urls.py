@@ -20,4 +20,5 @@ urlpatterns = [
     path('check_session_id', views.check_session_id, name='check_session_id'),
     path('driver_choose_product', views.driver_choose_product, name='driver_choose_product'),
     path('get_former', views.get_former, name='get_former'),
+    path('start_pressure_test', views.start_pressure_test, name="start_pressure_test"),
 ]

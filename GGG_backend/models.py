@@ -9,7 +9,7 @@ class Passenger(models.Model):
         primary_key=True, unique=True, max_length=500)  # openid
     # 0=unactive 1=匹配池 2=已匹配池 3=正在接乘客的路上 4=接到乘客，正在送客 5=待支付
     status = models.IntegerField(default=0, blank=True)
-    myorder_id = models.IntegerField(default=-1)
+    myorder_id = models.IntegerField(default=-1, blank=True)
     product = models.IntegerField(default=-1, blank=True) # 独乘产品id
     lat = models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
     lon = models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
