@@ -61,3 +61,8 @@ class Product(models.Model):
 
 class Setting(models.Model):
     products = models.CharField(max_length=1000, default='')
+
+class Area(models.Model):
+    name = models.CharField(max_length=100, default="")
+    border = models.TextField()
+    

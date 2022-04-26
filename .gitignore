@@ -25,5 +25,6 @@ xunit-reports/
 .history
 django_storage
 .vs
-staticfiles/
+staticfiles
+static_dic/admin/
 *.log

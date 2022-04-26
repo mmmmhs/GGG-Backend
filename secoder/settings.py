@@ -35,7 +35,7 @@ CSRF_TRUSTED_ORIGINS = ['https://ggg-backend-ggtouchfish.app.secoder.net']
 # Application definition
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-
+STATICFILES_DIRS =[BASE_DIR / "static_dic"]
 INSTALLED_APPS = [
 	# 'django_crontab'
 	# 仅在linux系统上可运行
