@@ -26,7 +26,7 @@ class Driver(models.Model):
     lat = models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
     lon = models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
     score = models.FloatField(default=0, blank=True)
-    scorenum = models.IntegerField(default=0, blank=True)
+    scorenum = models.IntegerField(default=0, blank=True) # 打分次数
     realname = models.CharField(default="", blank=True, max_length=10)
     phone = models.BigIntegerField(default=-1, blank=True)
     carinfo = models.CharField(default="", blank=True, max_length=500)
