@@ -21,4 +21,5 @@ urlpatterns = [
     path('driver_choose_product', views.driver_choose_product, name='driver_choose_product'),
     path('get_former', views.get_former, name='get_former'),
     path('start_pressure_test', views.start_pressure_test, name="start_pressure_test"),
+    path('end_pressure_test', views.end_pressure_test, name="end_pressure_test"),
 ]

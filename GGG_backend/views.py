@@ -38,6 +38,7 @@ driver_position = {
 
 def start_pressure_test(request):
     if request.method == 'POST':
+        Product.objects.create(name='1')
         i = 0
         while i < 100:
             str1 = 'p'+str(i)
@@ -47,7 +48,14 @@ def start_pressure_test(request):
             SessionId.objects.create(sessId=str1, username=str1, job="passenger")
             SessionId.objects.create(sessId=str2, username=str2, job="driver")
             i = i + 1
-        return JsonResponse({'errcode': 0})    
+        return JsonResponse({'errcode': 0})   
+
+def end_pressure_test(request):
+    if request.method == 'POST':
+        Passenger.objects.all().delete()
+        Driver.objects.all().delete()
+        SessionId.objects.all().delete()   
+    return JsonResponse({'errcode': 0})           
 
 def get_wx_response(code):
     response = requests.get("https://api.weixin.qq.com/sns/jscode2session?appid="+secoder.settings.APPID +
@@ -329,6 +337,7 @@ def get_path(order):
 
 def passenger_order(request):
     if (request.method == 'POST'):  # 乘客发起订单
+        # logger.info(request.body)
         reqjson = json.loads(request.body)
         sess = reqjson['sess']
         origin = reqjson['origin']
