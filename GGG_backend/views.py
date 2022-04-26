@@ -13,14 +13,14 @@ import string
 import hashlib
 import logging
 logger = logging.getLogger('django')
-mlogger =logging.getLogger('matchlist')
+mlogger = logging.getLogger('matchlist')
 formatter = logging.Formatter('%(name)s - %(lineno)d - %(message)s')
 console = logging.StreamHandler()
 console.setFormatter(formatter)
 console1 = logging.FileHandler("demo.log")
 console1.setFormatter(formatter)
 mlogger.addHandler(console1)
-mlogger.setLevel(level = logging.DEBUG)
+mlogger.setLevel(level=logging.DEBUG)
 
 
 match_list = {}
@@ -36,6 +36,7 @@ match_list = {}
 driver_position = {
 }  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
 
+
 def start_pressure_test(request):
     if request.method == 'POST':
         Product.objects.create(name='1')
@@ -45,17 +46,20 @@ def start_pressure_test(request):
             str2 = 'd'+str(i)
             Passenger.objects.create(name=str1)
             Driver.objects.create(name=str2)
-            SessionId.objects.create(sessId=str1, username=str1, job="passenger")
+            SessionId.objects.create(
+                sessId=str1, username=str1, job="passenger")
             SessionId.objects.create(sessId=str2, username=str2, job="driver")
             i = i + 1
-        return JsonResponse({'errcode': 0})   
+        return JsonResponse({'errcode': 0})
+
 
 def end_pressure_test(request):
     if request.method == 'POST':
         Passenger.objects.all().delete()
         Driver.objects.all().delete()
-        SessionId.objects.all().delete()   
-    return JsonResponse({'errcode': 0})           
+        SessionId.objects.all().delete()
+    return JsonResponse({'errcode': 0})
+
 
 def get_wx_response(code):
     response = requests.get("https://api.weixin.qq.com/sns/jscode2session?appid="+secoder.settings.APPID +
@@ -96,9 +100,11 @@ def login(request):
                 user = Driver.objects.filter(name=openID).first()
             else:
                 user = None
-            tmp = SessionId.objects.filter(username=openID).update(sessId=sessionID, job=job)
+            tmp = SessionId.objects.filter(
+                username=openID).update(sessId=sessionID, job=job)
             if tmp == 0:
-                SessionId.objects.create(username=openID, sessId=sessionID, job=job)
+                SessionId.objects.create(
+                    username=openID, sessId=sessionID, job=job)
             if not user:
                 return JsonResponse({'errcode': -10, 'sess': sessionID})
             res = JsonResponse({'errcode': errorcode, 'sess': sessionID})
@@ -306,7 +312,7 @@ def cancel_order(product, openid, job):
     cancel_user.save()
     influenced_user.status = 1
     influenced_user.save()
-            
+
 
 # 访问高德地图接口
 # 参数：product, order 返回(path, distance)元组
@@ -316,10 +322,11 @@ def get_path(order):
     response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
                             '&origin='+str(order.origin_lon)+','+str(order.origin_lat)+'&destination='+str(order.dest_lon)+','+str(order.dest_lat)+'&show_fields=polyline')
     response = response.json()
-    if(response['infocode']!='10000'):
-        path = [{order.origin_lon,order.origin_lat},{order.dest_lon,order.dest_lat}]
+    if(response['infocode'] != '10000'):
+        path = [{order.origin_lon, order.origin_lat},
+                {order.dest_lon, order.dest_lat}]
         distance = 9990000
-        return (path,distance)
+        return (path, distance)
     distance = float([match.value for match in parse(
         '$.route.paths[0].distance').find(response)][0])
     polylines = [match.value for match in parse(
@@ -394,7 +401,7 @@ def passenger_order(request):
         if driver_position[order_id]['latitude'] and driver_position[order_id]['longitude']:
             return JsonResponse({'errcode': errcode, 'driver': {'latitude': driver_position[order_id]['latitude'], 'longitude': driver_position[order_id]['longitude']}})
         else:
-            return JsonResponse({'errcode':errcode,'latitude':114,'longitude':36})
+            return JsonResponse({'errcode': errcode, 'latitude': 114, 'longitude': 36})
 
 
 def get_order_info(request):  # 乘客获取当前订单信息
@@ -405,7 +412,7 @@ def get_order_info(request):  # 乘客获取当前订单信息
     errcode = -1
     order = Order.objects.filter(id=order_id).first()
     passenger = Passenger.objects.filter(name=order.mypassenger).first()
-    if not order or not passenger or  not(sessionId.username==order.mypassenger or sessionId.username==order.mydriver):
+    if not order or not passenger or not(sessionId.username == order.mypassenger or sessionId.username == order.mydriver):
         return JsonResponse({'errcode': errcode})
     errcode = passenger.status
     mlogger.info(order)
@@ -431,9 +438,9 @@ def get_order_money(request):  # 乘客获取当前订单钱数
     sess = request.GET['sess']
     order_id = request.GET['order']
     sessionId = SessionId.objects.filter(sessId=sess).first()
-    
+
     order = Order.objects.filter(id=order_id).first()
-    if not order or not(sessionId.username==order.mypassenger or sessionId.username==order.mydriver):
+    if not order or not(sessionId.username == order.mypassenger or sessionId.username == order.mydriver):
         return JsonResponse({'errcode': -1})
     return JsonResponse({'errcode': 0, 'money': order.money})
 
@@ -693,7 +700,7 @@ def passenger_cancel(request):
                 cancel_order(passenger.product, user.username, "passenger")
             else:
                 passenger.status = 0
-                passenger.save()    
+                passenger.save()
             return JsonResponse({'errcode': 0})
         except exception as e:
             logger.error(e, exc_info=True)
@@ -715,7 +722,7 @@ def driver_cancel(request):
                 cancel_order(driver.product, user.username, "driver")
             else:
                 driver.status = 0
-                driver.save()    
+                driver.save()
             return JsonResponse({'errcode': 0})
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -766,3 +773,95 @@ def get_former(request):
             product_dict = {'id': driver.product, 'name': product.name,
                             'price': product.price_per_meter * 1000}
             return JsonResponse({'errcode': 0, 'order': order, 'product': product_dict})
+
+
+def get_user_info(request):
+    if request.method == 'GET':
+        sess = request.GET['sess']
+        user = SessionId.objects.filter(sessId=sess).first()
+        if not user:
+            return JsonResponse({'errcode': -1})
+        if user.job == "passenger":
+            passenger = Passenger.objects.filter(name=user.username).first()
+            if not passenger:
+                return JsonResponse({'errcode': -1})
+            try:
+                order_id = request.GET['order']
+            except Exception:
+                return JsonResponse({'errcode': 0, 'name': passenger.realname, 'phone': passenger.phone})
+            order = Order.objects.filter(id=order_id).first()
+            if not order:
+                return JsonResponse({'errcode': -1})
+            driver = Driver.objects.filter(name=order.mydriver).first()
+            if not driver:
+                return JsonResponse({'errcode': -1})
+            return JsonResponse({'errcode': 0, 'name': driver.realname, 'phone': driver.phone, 'carinfo': driver.carinfo, 'carcolor': driver.carcolor, 'carnum': driver.carnum, 'score': driver.score})
+        if user.job == "driver":
+            driver = Driver.objects.filter(name=user.username).first()
+            if not driver:
+                return JsonResponse({'errcode': -1})
+            try:
+                order_id = request.GET['order']
+            except Exception:
+                return JsonResponse({'errcode': 0, 'name': driver.realname, 'phone': driver.phone, 'carinfo': driver.carinfo, 'carcolor': driver.carcolor, 'carnum': driver.carnum, 'score': driver.score})
+            order = Order.objects.filter(id=order_id).first()
+            if not order:
+                return JsonResponse({'errcode': -1})
+            passenger = Passenger.objects.filter(name=order.mypassenger).first() 
+            if not passenger:
+                return JsonResponse({'errcode': -1})
+            return JsonResponse({'errcode': 0, 'name': passenger.realname, 'phone': passenger.phone})  
+
+def give_score(request):
+    if request.method == 'POST':
+        reqjson = json.loads(request.body)
+        sess = reqjson['sess']
+        user = SessionId.objects.filter(sessId=sess).first()
+        if not user or user.job != 'passenger':
+            return JsonResponse({'errcode': -1})
+        order_id = reqjson['order']
+        order = Order.objects.filter(id=order_id).first()
+        if not order:
+            return JsonResponse({'errcode': -1})
+        driver = Driver.objects.filter(name=order.mydriver).first() 
+        if not driver:
+            return JsonResponse({'errcode': -1})
+        score = reqjson['score'] 
+        driver.score = driver.score * driver.scorenum + score
+        driver.scorenum = driver.scorenum + 1
+        driver.save()
+        return JsonResponse({'errcode': 0})
+
+def set_user_info(request):
+    if request.method == 'POST':
+        reqjson = json.loads(request.body)
+        sess = reqjson['sess']
+        user = SessionId.objects.filter(sessId=sess).first()
+        if not user:
+            return JsonResponse({'errcode': -1})
+        if user.job == "passenger":
+            passenger = Passenger.objects.filter(name=user.username).first()
+            if not passenger: 
+                return JsonResponse({'errcode': -1})
+            name = reqjson['name'] 
+            phone = reqjson['phone'] 
+            passenger.realname = name
+            passenger.phone = phone
+            passenger.save()
+            return JsonResponse({'errcode': 0})
+        if user.job == "driver":
+            driver = Driver.objects.filter(name=user.username).first()
+            if not driver:       
+                return JsonResponse({'errcode': -1})  
+            name = reqjson['name'] 
+            phone = reqjson['phone'] 
+            carinfo = reqjson['carinfo'] 
+            carcolor = reqjson['carcolor']   
+            carnum = reqjson['carnum']     
+            driver.realname = name
+            driver.phone = phone
+            driver.carinfo = carinfo
+            driver.carcolor = carcolor
+            driver.carnum = carnum
+            driver.save() 
+            return JsonResponse({'errcode': 0})    

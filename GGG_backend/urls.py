@@ -22,4 +22,7 @@ urlpatterns = [
     path('get_former', views.get_former, name='get_former'),
     path('start_pressure_test', views.start_pressure_test, name="start_pressure_test"),
     path('end_pressure_test', views.end_pressure_test, name="end_pressure_test"),
+    path('get_user_info', views.get_user_info, name='get_user_info'),
+    path('set_user_info', views.set_user_info, name='set_user_info'),
+    path('give_score', views.give_score, name='give_score'),
 ]

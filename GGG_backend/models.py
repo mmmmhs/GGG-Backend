@@ -13,6 +13,8 @@ class Passenger(models.Model):
     product = models.IntegerField(default=-1, blank=True) # 独乘产品id
     lat = models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
     lon = models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
+    realname = models.CharField(default="", blank=True, max_length=10)
+    phone = models.BigIntegerField(default=-1, blank=True)
 
 class Driver(models.Model):
     name = models.CharField(
@@ -23,6 +25,14 @@ class Driver(models.Model):
     product = models.IntegerField(default=-1, blank=True) # 独乘产品id
     lat = models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
     lon = models.DecimalField(default=0, blank=True, max_digits=10, decimal_places=6)
+    score = models.FloatField(default=0, blank=True)
+    scorenum = models.IntegerField(default=0, blank=True)
+    realname = models.CharField(default="", blank=True, max_length=10)
+    phone = models.BigIntegerField(default=-1, blank=True)
+    carinfo = models.CharField(default="", blank=True, max_length=500)
+    carcolor = models.CharField(default="", blank=True, max_length=100)
+    carnum = models.CharField(default="", blank=True, max_length=100)
+
 
 class SessionId(models.Model):
     sessId = models.CharField(
