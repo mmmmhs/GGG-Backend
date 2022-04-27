@@ -74,5 +74,5 @@ class Setting(models.Model):
 
 class Area(models.Model):
     name = models.CharField(max_length=100, default="")
-    border = models.TextField()
+    border = models.TextField() # "[{lat: , lng: }, {lat: , lng: }, ...]"
     

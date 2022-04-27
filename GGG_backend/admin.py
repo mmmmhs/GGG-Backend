@@ -15,5 +15,4 @@ class AreaAdmin(admin.ModelAdmin):
         )
 
 
-admin.site.register([Passenger, Driver, SessionId,
-                    Order, Product, Setting])
+admin.site.register([Passenger, Driver, SessionId, Order, Product, Setting])

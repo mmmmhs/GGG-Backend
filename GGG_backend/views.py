@@ -6,7 +6,7 @@ from django.forms.models import model_to_dict
 # Create your views here.
 from django.http import HttpResponse, JsonResponse
 import requests
-from GGG_backend.models import Driver, Passenger, SessionId, Order, Product, Setting
+from GGG_backend.models import Driver, Passenger, SessionId, Order, Product, Setting, Area
 import secoder.settings
 import random
 import string
@@ -33,9 +33,7 @@ match_list = {}
 }
 # openid
 """
-driver_position = {
-}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
-
+driver_position = {}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
 
 def start_pressure_test(request):
     if request.method == 'POST':
@@ -169,6 +167,21 @@ def driver_choose_product(request):
         driver.save()
         return JsonResponse({'errcode': 0})
 
+# 判断点是否在开城围栏中
+def check_area(area_id, lat, lng):
+    area = Area.objects.filter(id=area_id).first()
+    if not area:
+        raise Exception('开城围栏{}不存在'.format(area_id))
+    pointlist = json.loads(area.border)
+    crossing = 0
+    for i in range(len(pointlist)):
+        slope = (pointlist[i]['lng'] - pointlist[i + 1]['lng']) / (pointlist[i]['lat'] - pointlist[i + 1]['lat'])
+        betw1 = (pointlist[i]['lat'] <= lat) and (lat < pointlist[i + 1]['lat'])
+        betw2 = (pointlist[i + 1]['lat'] <= lat) and (lat < pointlist[i]['lat'])
+        above = (lng < slope * (lat - pointlist[i]['lat']) + pointlist[i]['lng'])
+        if (betw1 or betw2) and above:
+            crossing += 1
+    return (crossing % 2 != 0)    
 
 # 乘客/司机发单时调用
 # 传入 独乘产品id, openid, job
@@ -795,7 +808,7 @@ def get_user_info(request):
             driver = Driver.objects.filter(name=order.mydriver).first()
             if not driver:
                 return JsonResponse({'errcode': -1})
-            return JsonResponse({'errcode': 0, 'name': driver.realname, 'phone': driver.phone, 'carinfo': driver.carinfo, 'carcolor': driver.carcolor, 'carnum': driver.carnum, 'score': driver.score})
+            return JsonResponse({'errcode': 0, 'name': driver.realname, 'phone': driver.phone, 'carinfo': driver.carinfo, 'carcolor': driver.carcolor, 'carnum': driver.carnum, 'score': driver.score, 'product': driver.product})
         if user.job == "driver":
             driver = Driver.objects.filter(name=user.username).first()
             if not driver:
@@ -803,7 +816,7 @@ def get_user_info(request):
             try:
                 order_id = request.GET['order']
             except Exception:
-                return JsonResponse({'errcode': 0, 'name': driver.realname, 'phone': driver.phone, 'carinfo': driver.carinfo, 'carcolor': driver.carcolor, 'carnum': driver.carnum, 'score': driver.score})
+                return JsonResponse({'errcode': 0, 'name': driver.realname, 'phone': driver.phone, 'carinfo': driver.carinfo, 'carcolor': driver.carcolor, 'carnum': driver.carnum, 'score': driver.score, 'product': driver.product})
             order = Order.objects.filter(id=order_id).first()
             if not order:
                 return JsonResponse({'errcode': -1})
@@ -857,11 +870,13 @@ def set_user_info(request):
             phone = reqjson['phone'] 
             carinfo = reqjson['carinfo'] 
             carcolor = reqjson['carcolor']   
-            carnum = reqjson['carnum']     
+            carnum = reqjson['carnum']   
+            product = reqjson['product']  
             driver.realname = name
             driver.phone = phone
             driver.carinfo = carinfo
             driver.carcolor = carcolor
             driver.carnum = carnum
+            driver.product = product
             driver.save() 
             return JsonResponse({'errcode': 0})    
