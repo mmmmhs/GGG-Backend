@@ -25,19 +25,25 @@ mlogger.setLevel(level=logging.DEBUG)
 
 match_list = {}
 """ 
-{id : { passenger_unmatched : [],  # 待匹配乘客池子 
-        driver_unmatched : [],  # 待匹配司机池子
-        passenger_matched : [],  # 已匹配乘客池子
-        driver_matched : [] # 已匹配司机池子
-      }
+{
+ area:{
+        product : { passenger_unmatched : [],  # 待匹配乘客池子 
+                    driver_unmatched : [],  # 待匹配司机池子
+                    passenger_matched : [],  # 已匹配乘客池子
+                    driver_matched : [] # 已匹配司机池子
+                  }
+      }          
 }
 # openid
 """
-driver_position = {}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
+driver_position = {
+}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
+
 
 def start_pressure_test(request):
     if request.method == 'POST':
         Product.objects.create(name='1')
+        Area.objects.create(name='1')
         i = 0
         while i < 100:
             str1 = 'p'+str(i)
@@ -53,6 +59,8 @@ def start_pressure_test(request):
 
 def end_pressure_test(request):
     if request.method == 'POST':
+        Product.objects.filter(name='1').delete()
+        Area.objects.filter(name='1').delete()
         Passenger.objects.all().delete()
         Driver.objects.all().delete()
         SessionId.objects.all().delete()
@@ -168,43 +176,64 @@ def driver_choose_product(request):
         return JsonResponse({'errcode': 0})
 
 # 判断点是否在开城围栏中
+
+
 def check_area(area_id, lat, lng):
+    lat = float(lat)
+    lng = float(lng)
     area = Area.objects.filter(id=area_id).first()
     if not area:
         raise Exception('开城围栏{}不存在'.format(area_id))
     pointlist = json.loads(area.border)
     crossing = 0
-    for i in range(len(pointlist)):
-        slope = (pointlist[i]['lng'] - pointlist[i + 1]['lng']) / (pointlist[i]['lat'] - pointlist[i + 1]['lat'])
-        betw1 = (pointlist[i]['lat'] <= lat) and (lat < pointlist[i + 1]['lat'])
-        betw2 = (pointlist[i + 1]['lat'] <= lat) and (lat < pointlist[i]['lat'])
-        above = (lng < slope * (lat - pointlist[i]['lat']) + pointlist[i]['lng'])
-        if (betw1 or betw2) and above:
-            crossing += 1
-    return (crossing % 2 != 0)    
+    for i in range(len(pointlist) - 1):
+        # 避免与端点相交两次
+        if lat == pointlist[i]['lat'] and pointlist[i]['lat'] > pointlist[i + 1]['lat']:
+            continue
+        if lat == pointlist[i + 1]['lat'] and pointlist[i]['lat'] < pointlist[i + 1]['lat']:
+            continue
+        # 开区域
+        if pointlist[i]['lat'] - pointlist[i + 1]['lat'] == 0:
+            continue
+        if pointlist[i]['lat'] - pointlist[i + 1]['lat'] != 0:
+            slope = (pointlist[i]['lng'] - pointlist[i + 1]['lng']) / \
+                (pointlist[i]['lat'] - pointlist[i + 1]['lat'])
+            betw1 = (pointlist[i]['lat'] <= lat) and (
+                lat < pointlist[i + 1]['lat'])
+            betw2 = (pointlist[i + 1]['lat'] <=
+                    lat) and (lat < pointlist[i]['lat'])
+            above = (lng < slope *
+                    (lat - pointlist[i]['lat']) + pointlist[i]['lng'])
+            if (betw1 or betw2) and above:
+                crossing += 1
+    return (crossing % 2 != 0)
 
 # 乘客/司机发单时调用
 # 传入 独乘产品id, openid, job
 # (若match_list无该独乘产品池子则创建之,并)加入待匹配池子
-def init_match_list(product, name, job):
-    if not product in match_list:
-        match_list[product] = {'passenger_unmatched': [], 'driver_unmatched': [],
-                               'passenger_matched': [], 'driver_matched': []}
-    if job == "passenger" and name not in match_list[product]['passenger_unmatched']:
-        match_list[product]['passenger_unmatched'].append(name)
-    elif job == "driver" and name not in match_list[product]['driver_unmatched']:
-        match_list[product]['driver_unmatched'].append(name)
+
+
+def init_match_list(area, product, name, job):
+    if not area in match_list:
+        match_list[area] = {}
+    if not product in match_list[area]:
+        match_list[area][product] = {'passenger_unmatched': [], 'driver_unmatched': [],
+                                     'passenger_matched': [], 'driver_matched': []}
+    if job == "passenger" and name not in match_list[area][product]['passenger_unmatched']:
+        match_list[area][product]['passenger_unmatched'].append(name)
+    elif job == "driver" and name not in match_list[area][product]['driver_unmatched']:
+        match_list[area][product]['driver_unmatched'].append(name)
 
 # 司乘匹配 传入 独乘产品id openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
 # 修改order.status mydriver
 
 
-def match(product, openid, job):
+def match(area, product, openid, job):
     try:
-        driver_unmatched = match_list[product]['driver_unmatched']
-        driver_matched = match_list[product]['driver_matched']
-        passenger_unmatched = match_list[product]['passenger_unmatched']
-        passenger_matched = match_list[product]['passenger_matched']
+        driver_unmatched = match_list[area][product]['driver_unmatched']
+        driver_matched = match_list[area][product]['driver_matched']
+        passenger_unmatched = match_list[area][product]['passenger_unmatched']
+        passenger_matched = match_list[area][product]['passenger_matched']
         if job == "passenger":
             if len(driver_unmatched) > 0:
                 user = Passenger.objects.filter(name=openid).first()
@@ -271,13 +300,13 @@ def check_time(order_id):
 # 修改status myorder_id 改变池子
 
 
-def cancel_order(product, openid, job):
+def cancel_order(area, product, openid, job):
     cancel_user, influenced_user, order = None, None, None
     logger.info(openid+' '+job)
-    driver_unmatched = match_list[product]['driver_unmatched']
-    driver_matched = match_list[product]['driver_matched']
-    passenger_unmatched = match_list[product]['passenger_unmatched']
-    passenger_matched = match_list[product]['passenger_matched']
+    driver_unmatched = match_list[area][product]['driver_unmatched']
+    driver_matched = match_list[area][product]['driver_matched']
+    passenger_unmatched = match_list[area][product]['passenger_unmatched']
+    passenger_matched = match_list[area][product]['passenger_matched']
     if job == "passenger":
         cancel_user = Passenger.objects.filter(name=openid).first()
         if cancel_user.name in passenger_unmatched:
@@ -328,7 +357,7 @@ def cancel_order(product, openid, job):
 
 
 # 访问高德地图接口
-# 参数：product, order 返回(path, distance)元组
+# 参数: order 返回(path, distance)元组
 
 
 def get_path(order):
@@ -336,8 +365,8 @@ def get_path(order):
                             '&origin='+str(order.origin_lon)+','+str(order.origin_lat)+'&destination='+str(order.dest_lon)+','+str(order.dest_lat)+'&show_fields=polyline')
     response = response.json()
     if(response['infocode'] != '10000'):
-        path = [{order.origin_lon, order.origin_lat},
-                {order.dest_lon, order.dest_lat}]
+        path = [{float(order.origin_lon), float(order.origin_lat)},
+                {float(order.dest_lon), float(order.dest_lat)}]
         distance = 9990000
         return (path, distance)
     distance = float([match.value for match in parse(
@@ -363,6 +392,9 @@ def passenger_order(request):
         origin = reqjson['origin']
         dest = reqjson['dest']  # name latitude longitude
         product = reqjson['product']
+        areas = Area.objects.all()
+        area_id = [-1, -1]
+        area_name = ["", ""]
         sessionId = SessionId.objects.filter(sessId=sess).first()
         passengername = sessionId.username
         passenger = Passenger.objects.filter(name=passengername).first()
@@ -377,14 +409,28 @@ def passenger_order(request):
         passenger.lat = origin['latitude']
         passenger.lon = origin['longitude']
         passenger.product = product
+        for area in areas:
+            if(check_area(area.id, passenger.lat, passenger.lon)):
+                area_id[0] = area.id
+                area_name[0] = area.name
+                break
+        for area in areas:
+            if(check_area(area.id, dest['latitude'], dest['longitude'])):
+                area_id[1] = area.id
+                area_name[1] = area.name
+                break
+        if(area_id[0] != area_id[1] or area_id[0] == -1 or area_id[1] == -1):
+            return JsonResponse({'errcode': -10, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
-                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product)  # 创建订单
+                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单
         passenger.myorder_id = order.id
         order_id = order.id
         passenger.save()
-        init_match_list(int(product), passengername, 'passenger')
-        match(int(product), passengername, 'passenger')
-        return JsonResponse({'errcode': errcode, 'order': order_id})
+
+        init_match_list(int(area_id[0]), int(product),
+                        passengername, 'passenger')
+        match(int(area_id[0]), int(product), passengername, 'passenger')
+        return JsonResponse({'errcode': errcode, 'order': order_id, 'area': area_id, 'info': area_name})
 
     elif(request.method == 'GET'):  # 乘客询问订单状态
 
@@ -404,7 +450,7 @@ def passenger_order(request):
         if check_time(order.id) == False and passenger.status == 2:  # 已匹配司机超时
             order = Order.objects.filter(id=passenger.myorder_id).first()
             driver = Driver.objects.filter(myorder_id=order.id).first()
-            cancel_order(product, driver.name, 'driver')
+            cancel_order(int(order.area), int(product), driver.name, 'driver')
         passenger = Passenger.objects.filter(name=passengername).first()
         errcode = passenger.status
         drivername = order.mydriver
@@ -413,8 +459,8 @@ def passenger_order(request):
             return JsonResponse({'errcode': errcode})
         if driver_position[order_id]['latitude'] and driver_position[order_id]['longitude']:
             return JsonResponse({'errcode': errcode, 'driver': {'latitude': driver_position[order_id]['latitude'], 'longitude': driver_position[order_id]['longitude']}})
-        else:
-            return JsonResponse({'errcode': errcode, 'latitude': 114, 'longitude': 36})
+        # else:
+        #     return JsonResponse({'errcode': errcode, 'latitude': 114, 'longitude': 36}) # ????
 
 
 def get_order_info(request):  # 乘客获取当前订单信息
@@ -550,11 +596,16 @@ def driver_order(request):
             origin = reqjson['origin']
         except Exception as e:
             return HttpResponse("error:{}".format(e), status=405)
-        user = SessionId.objects.filter(sessId=sessionId).first()  # 找到对应user
+        origin_latitude = origin['latitude']
+        origin_longitude = origin['longitude']
+        areas = Area.objects.all()
+        area_id = -1
+        area_name = ""
         errcode = -1
+        user = SessionId.objects.filter(sessId=sessionId).first()  # 找到对应user
         if not user or user.job == 'passenger':  # 不能为空，不能为乘客
             errcode = -10
-            return JsonResponse({'errcode': errcode})
+            return JsonResponse({'errcode': errcode, 'area': area_id, 'info': area_name})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         if driver.status == 0:  # 0代表没有订单
             errcode = 0
@@ -562,9 +613,18 @@ def driver_order(request):
             driver.lat = origin['latitude']
             driver.lon = origin['longitude']
             driver.save()
-            init_match_list(driver.product, driver.name, "driver")
-            match(driver.product, driver.name, "driver")  # 为司机进行匹配
-        return JsonResponse({'errcode': errcode})
+            for area in areas:
+                if (check_area(area.id, origin_latitude, origin_longitude)):
+                    area_id = area.id
+                    area_name = area.name
+                    break
+            if (area_id == -1):
+                return JsonResponse({'errcode': errcode, 'area': area_id, 'info': area_name})
+            init_match_list(int(area_id), int(
+                driver.product), driver.name, "driver")
+            match(int(area_id), int(driver.product),
+                  driver.name, "driver")  # 为司机进行匹配
+        return JsonResponse({'errcode': errcode, 'area': area_id, 'info': area_name})
     if (request.method == 'GET'):
         try:
             sessionId = request.GET['sess']
@@ -681,8 +741,8 @@ def driver_confirm_arrive(request):
                 name=order.mypassenger).first()
             if not passenger:
                 return JsonResponse({'errcode': -1})
-            driver_matched = match_list[passenger.product]['driver_matched']
-            passenger_matched = match_list[passenger.product]['passenger_matched']
+            driver_matched = match_list[order.area][passenger.product]['driver_matched']
+            passenger_matched = match_list[order.area][passenger.product]['passenger_matched']
             driver.status = 5
             passenger.status = 5
             driver.save()
@@ -710,7 +770,11 @@ def passenger_cancel(request):
             if not passenger:
                 return JsonResponse({'errcode': -1})
             if passenger.myorder_id != -1:
-                cancel_order(passenger.product, user.username, "passenger")
+                order = Order.objects.filter(id=passenger.myorder_id).first()
+                if not order:
+                    raise Exception('订单{}不存在'.format(passenger.myorder_id))
+                cancel_order(int(order.area), int(passenger.product),
+                             user.username, "passenger")
             else:
                 passenger.status = 0
                 passenger.save()
@@ -732,7 +796,11 @@ def driver_cancel(request):
             if not driver:
                 return JsonResponse({'errcode': -1})
             if driver.myorder_id != -1:
-                cancel_order(driver.product, user.username, "driver")
+                order = Order.objects.filter(id=driver.myorder_id).first()
+                if not order:
+                    raise Exception('订单{}不存在'.format(driver.myorder_id))
+                cancel_order(int(order.area), int(driver.product),
+                             user.username, "driver")
             else:
                 driver.status = 0
                 driver.save()
@@ -820,10 +888,12 @@ def get_user_info(request):
             order = Order.objects.filter(id=order_id).first()
             if not order:
                 return JsonResponse({'errcode': -1})
-            passenger = Passenger.objects.filter(name=order.mypassenger).first() 
+            passenger = Passenger.objects.filter(
+                name=order.mypassenger).first()
             if not passenger:
                 return JsonResponse({'errcode': -1})
-            return JsonResponse({'errcode': 0, 'name': passenger.realname, 'phone': passenger.phone})  
+            return JsonResponse({'errcode': 0, 'name': passenger.realname, 'phone': passenger.phone})
+
 
 def give_score(request):
     if request.method == 'POST':
@@ -836,14 +906,15 @@ def give_score(request):
         order = Order.objects.filter(id=order_id).first()
         if not order:
             return JsonResponse({'errcode': -1})
-        driver = Driver.objects.filter(name=order.mydriver).first() 
+        driver = Driver.objects.filter(name=order.mydriver).first()
         if not driver:
             return JsonResponse({'errcode': -1})
-        score = reqjson['score'] 
+        score = reqjson['score']
         driver.score = driver.score * driver.scorenum + score
         driver.scorenum = driver.scorenum + 1
         driver.save()
         return JsonResponse({'errcode': 0})
+
 
 def set_user_info(request):
     if request.method == 'POST':
@@ -854,29 +925,29 @@ def set_user_info(request):
             return JsonResponse({'errcode': -1})
         if user.job == "passenger":
             passenger = Passenger.objects.filter(name=user.username).first()
-            if not passenger: 
+            if not passenger:
                 return JsonResponse({'errcode': -1})
-            name = reqjson['name'] 
-            phone = reqjson['phone'] 
+            name = reqjson['name']
+            phone = reqjson['phone']
             passenger.realname = name
             passenger.phone = phone
             passenger.save()
             return JsonResponse({'errcode': 0})
         if user.job == "driver":
             driver = Driver.objects.filter(name=user.username).first()
-            if not driver:       
-                return JsonResponse({'errcode': -1})  
-            name = reqjson['name'] 
-            phone = reqjson['phone'] 
-            carinfo = reqjson['carinfo'] 
-            carcolor = reqjson['carcolor']   
-            carnum = reqjson['carnum']   
-            product = reqjson['product']  
+            if not driver:
+                return JsonResponse({'errcode': -1})
+            name = reqjson['name']
+            phone = reqjson['phone']
+            carinfo = reqjson['carinfo']
+            carcolor = reqjson['carcolor']
+            carnum = reqjson['carnum']
+            product = reqjson['product']
             driver.realname = name
             driver.phone = phone
             driver.carinfo = carinfo
             driver.carcolor = carcolor
             driver.carnum = carnum
             driver.product = product
-            driver.save() 
-            return JsonResponse({'errcode': 0})    
+            driver.save()
+            return JsonResponse({'errcode': 0})

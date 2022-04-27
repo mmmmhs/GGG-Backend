@@ -58,6 +58,8 @@ class Order(models.Model):
     start_time = models.FloatField(default=0)  # 发起订单时间戳
     end_time = models.FloatField(default=0, blank=True)
     product = models.IntegerField(default=0,blank=True)
+    area = models.IntegerField(default=0, blank=True)
+
     # 0订单发起，正在等待司机接单 1司乘匹配完成 2订单结束
     status = models.IntegerField(default=0, blank=True)
     money = models.IntegerField(default=0)
