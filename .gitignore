@@ -21,6 +21,7 @@ xunit-reports/
 **/.DS_Store
 .idea
 .vscode
+.vs
 *.sqlite3
 .history
 django_storage
