@@ -109,9 +109,9 @@ class GGG_test(TestCase):
             print("error:{}".format(e))
 
     # 测试订单流转
-    @patch("GGG_backend.views.get_path")
-    def test_all_okay(self, mock_get_path):
-        mock_get_path.return_value = (
+    @patch("GGG_backend.views.get_order_path")
+    def test_all_okay(self, mock_get_order_path):
+        mock_get_order_path.return_value = (
             [{'longitude': 114, 'latitude': 514}], 1919)
         # 设置用户信息
         res1 = self.client.post('/api/set_user_info', data={
@@ -258,9 +258,9 @@ class GGG_test(TestCase):
         self.assertEqual(errcode2, 0)
         self.assertEqual(order2, order_id2)
 
-    @patch("GGG_backend.views.get_path")
-    def test_get_order_info_okay(self, mock_get_path):
-        mock_get_path.return_value = (
+    @patch("GGG_backend.views.get_order_path")
+    def test_get_order_info_okay(self, mock_get_order_path):
+        mock_get_order_path.return_value = (
             [{'longitude': 114, 'latitude': 514}], 1919)
         Order.objects.create(mypassenger='arui', product=1,
                              origin_lon="1.000000", origin_lat="2.000000", dest_lon="2.000000", dest_lat="3.000000")
