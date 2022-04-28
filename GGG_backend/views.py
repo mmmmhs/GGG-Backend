@@ -420,7 +420,7 @@ def passenger_order(request):
                 area_name[1] = area.name
                 break
         if(area_id[0] != area_id[1] or area_id[0] == -1 or area_id[1] == -1):
-            return JsonResponse({'errcode': -10, 'area': area_id, 'info': area_name})
+            return JsonResponse({'errcode': 0, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
                                      dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单
         passenger.myorder_id = order.id
@@ -609,7 +609,6 @@ def driver_order(request):
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         if driver.status == 0:  # 0代表没有订单
             errcode = 0
-            driver.status = 1
             driver.lat = origin['latitude']
             driver.lon = origin['longitude']
             driver.save()
@@ -620,6 +619,7 @@ def driver_order(request):
                     break
             if (area_id == -1):
                 return JsonResponse({'errcode': errcode, 'area': area_id, 'info': area_name})
+            driver.status = 1
             init_match_list(int(area_id), int(
                 driver.product), driver.name, "driver")
             match(int(area_id), int(driver.product),
