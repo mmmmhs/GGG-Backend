@@ -201,9 +201,9 @@ def check_area(area_id, lat, lng):
             betw1 = (pointlist[i]['lat'] <= lat) and (
                 lat < pointlist[i + 1]['lat'])
             betw2 = (pointlist[i + 1]['lat'] <=
-                    lat) and (lat < pointlist[i]['lat'])
+                     lat) and (lat < pointlist[i]['lat'])
             above = (lng < slope *
-                    (lat - pointlist[i]['lat']) + pointlist[i]['lng'])
+                     (lat - pointlist[i]['lat']) + pointlist[i]['lng'])
             if (betw1 or betw2) and above:
                 crossing += 1
     return (crossing % 2 != 0)
@@ -357,10 +357,35 @@ def cancel_order(area, product, openid, job):
 
 
 # 访问高德地图接口
+
+# 获取接乘客行程路径 返回path
+def get_passenger_path(order):
+    passenger = Passenger.objects.filter(name=order.mypassenger).first()
+    driver = Driver.objects.filter(name=order.mydriver).first()
+    response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
+                            '&origin='+str(driver.lon)+','+str(driver.lat)+'&destination='+str(passenger.lon)+','+str(passenger.lat)+'&show_fields=polyline')
+    response = response.json()
+    if(response['infocode'] != '10000'):
+        path = [{float(driver.lon), float(driver.lat)},
+                {float(passenger.lon), float(passenger.lat)}]
+        return path
+    polylines = [match.value for match in parse(
+        '$.route.paths[0].steps[*].polyline').find(response)]
+    strs = []  # ['lon,lat;lon,lat']
+    for polyline in polylines:
+        strs.extend(polyline.split(';'))
+    path = []
+    for str1 in strs:
+        temp = str1.split(',')
+        # [{lon,lat}]
+        path.append({"longitude": float(temp[0]), "latitude": float(temp[1])})
+    return path
+
+# 获取订单行程路径&长度
 # 参数: order 返回(path, distance)元组
 
 
-def get_path(order):
+def get_order_path(order):
     response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
                             '&origin='+str(order.origin_lon)+','+str(order.origin_lat)+'&destination='+str(order.dest_lon)+','+str(order.dest_lat)+'&show_fields=polyline')
     response = response.json()
@@ -433,7 +458,6 @@ def passenger_order(request):
         return JsonResponse({'errcode': errcode, 'order': order_id, 'area': area_id, 'info': area_name})
 
     elif(request.method == 'GET'):  # 乘客询问订单状态
-
         sess = request.GET['sess']
         order_id = int(request.GET['order'])
         sessionId = SessionId.objects.filter(sessId=sess).first()
@@ -457,10 +481,10 @@ def passenger_order(request):
         driver = Driver.objects.filter(name=drivername).first()
         if not driver or driver.status <= 2 or passenger.status <= 2:
             return JsonResponse({'errcode': errcode})
-        if driver_position[order_id]['latitude'] and driver_position[order_id]['longitude']:
+        elif driver_position[order_id]['latitude'] and driver_position[order_id]['longitude']:
             return JsonResponse({'errcode': errcode, 'driver': {'latitude': driver_position[order_id]['latitude'], 'longitude': driver_position[order_id]['longitude']}})
-        # else:
-        #     return JsonResponse({'errcode': errcode, 'latitude': 114, 'longitude': 36}) # ????
+        else:
+            return JsonResponse({'errcode': errcode})  # ????
 
 
 def get_order_info(request):  # 乘客获取当前订单信息
@@ -479,7 +503,7 @@ def get_order_info(request):  # 乘客获取当前订单信息
     driver_info = drivername[0:5]  # 司机前五位
     passenger_info = order.mypassenger[0:5]  # 乘客前五位
     product = Product.objects.filter(id=order.product).first()
-    god_ans = get_path(order)
+    god_ans = get_order_path(order)
     distance = god_ans[1]
     path = god_ans[0]
     money = distance * product.price_per_meter
@@ -620,6 +644,7 @@ def driver_order(request):
             if (area_id == -1):
                 return JsonResponse({'errcode': errcode, 'area': area_id, 'info': area_name})
             driver.status = 1
+            driver.save()
             init_match_list(int(area_id), int(
                 driver.product), driver.name, "driver")
             match(int(area_id), int(driver.product),
@@ -713,7 +738,7 @@ def driver_confirm_aboard(request):
             driver.save()
             passenger.save()
             product = Product.objects.filter(id=passenger.product).first()
-            path, distance = get_path(order)
+            path, distance = get_order_path(order)
             speed = product.speed
             esti_time = distance / speed
             return JsonResponse({'errcode': 0, 'path': path, 'time': esti_time})
@@ -948,6 +973,10 @@ def set_user_info(request):
             driver.carinfo = carinfo
             driver.carcolor = carcolor
             driver.carnum = carnum
-            driver.product = product
-            driver.save()
-            return JsonResponse({'errcode': 0})
+            if Product.objects.filter(id=product).first():
+                driver.product = product
+                driver.save()
+                return JsonResponse({'errcode': 0})
+            else:
+                driver.save()
+                return JsonResponse({'errcode': -10})

@@ -57,7 +57,7 @@ class Order(models.Model):
     match_time = models.FloatField(default=0, blank=True)
     start_time = models.FloatField(default=0)  # 发起订单时间戳
     end_time = models.FloatField(default=0, blank=True)
-    product = models.IntegerField(default=0,blank=True)
+    product = models.IntegerField(default=-1,blank=True)
     area = models.IntegerField(default=0, blank=True)
 
     # 0订单发起，正在等待司机接单 1司乘匹配完成 2订单结束
@@ -76,5 +76,5 @@ class Setting(models.Model):
 
 class Area(models.Model):
     name = models.CharField(max_length=100, default="")
-    border = models.TextField() # "[{lat: , lng: }, {lat: , lng: }, ...]"
+    border = models.TextField() # '[{"lat": num, "lng": num}, {"lat": num, "lng": num}, ...]'
     
