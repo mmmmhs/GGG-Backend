@@ -57,6 +57,9 @@
             editor.setActionMode(TMap.tools.constants.EDITOR_ACTION.INTERACT)
             $path.val(JSON.stringify(geometry.paths.map(ob=>{return {lat:ob.lat, lng:ob.lng}})));
         });
+        editor.on('adjust_complete', (geometry) => {
+            $path.val(JSON.stringify(geometry.paths.map(ob=>{return {lat:ob.lat, lng:ob.lng}})));
+        });
         editor.on('delete_complete', (geometry) => {
             editor.setActionMode(TMap.tools.constants.EDITOR_ACTION.DRAW)
             $path.val('');

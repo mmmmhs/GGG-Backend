@@ -176,6 +176,14 @@ class GGG_test(TestCase):
         info = response.json()['info']
         self.assertEqual(errcode, 0)
         self.assertEqual(info, "arui")
+        response = self.client.get('/api/get_order_info', data={
+                                   'sess': '369', 'order': order_id}, content_type='application/json')
+        code = response.json()['errcode']
+        passenger = response.json()['passenger_info']
+        money = response.json()['money']
+        self.assertEqual(code, 3)
+        self.assertEqual(passenger, 'arui')
+        self.assertEqual(money, 1554390)
         # 司机确认乘客上车
         order = Order.objects.filter(mypassenger='arui').first()
         order_id = order.id
@@ -183,7 +191,7 @@ class GGG_test(TestCase):
             '/api/driver_confirm_aboard', data={'sess': "963", 'order': order_id}, content_type='application/json')
         errcode = response.json()['errcode']
         self.assertEqual(errcode, 0)
-        path = response.json()['path']
+        path = response.json()['order_path']
         time = response.json()['time']
         self.assertEqual(path, [{'longitude': 114, 'latitude': 514}])
         self.assertEqual(time, 1)
@@ -258,46 +266,6 @@ class GGG_test(TestCase):
         self.assertEqual(errcode2, 0)
         self.assertEqual(order2, order_id2)
 
-    @patch("GGG_backend.views.get_order_path")
-    def test_get_order_info_okay(self, mock_get_order_path):
-        mock_get_order_path.return_value = (
-            [{'longitude': 114, 'latitude': 514}], 1919)
-        Order.objects.create(mypassenger='arui', product=1,
-                             origin_lon="1.000000", origin_lat="2.000000", dest_lon="2.000000", dest_lat="3.000000")
-
-        order = Order.objects.filter(mypassenger='arui').first()
-        setup_order_id = order.id
-        response = self.client.get('/api/get_order_info', data={
-                                   'sess': '369', 'order': setup_order_id}, content_type='application/json')
-        code = response.json()['errcode']
-        passenger = response.json()['passenger_info']
-        money = response.json()['money']
-        self.assertEqual(code, 0)
-        self.assertEqual(passenger, 'arui')
-        self.assertEqual(money, 1554390)
-
-    # # 测试获取历史订单
-    def test_get_history_order_info(self):
-        Order.objects.create(mypassenger='arui',
-                             mydriver='ashuai', money=100, status=1)
-        response = self.client.get(
-            '/api/get_history_order_info', data={'sess': '369'})
-        orders = response.json()['orders']
-        passenger = orders[0]['passenger_info']
-        self.assertEqual(passenger, 'arui')
-        money = orders[0]['money']
-        self.assertEqual(money, 100)
-        status = orders[0]['status']
-        self.assertEqual(status, 1)
-        response = self.client.get(
-            '/api/get_history_order_info', data={'sess': '963'})
-        orders = response.json()['orders']
-        driver = orders[0]['driver_info']
-        self.assertEqual(driver, 'ashua')
-        money = orders[0]['money']
-        self.assertEqual(money, 100)
-        status = orders[0]['status']
-        self.assertEqual(status, 1)
 
     # 这是get_order_money的GET接口应该成功的测例
 

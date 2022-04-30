@@ -366,8 +366,8 @@ def get_passenger_path(order):
                             '&origin='+str(driver.lon)+','+str(driver.lat)+'&destination='+str(passenger.lon)+','+str(passenger.lat)+'&show_fields=polyline')
     response = response.json()
     if(response['infocode'] != '10000'):
-        path = [{float(driver.lon), float(driver.lat)},
-                {float(passenger.lon), float(passenger.lat)}]
+        path = [{"longitude": float(driver.lon), "latitude": float(driver.lat)},
+                {"longitude": float(passenger.lon), "latitude": float(passenger.lat)}]
         return path
     polylines = [match.value for match in parse(
         '$.route.paths[0].steps[*].polyline').find(response)]
@@ -390,8 +390,8 @@ def get_order_path(order):
                             '&origin='+str(order.origin_lon)+','+str(order.origin_lat)+'&destination='+str(order.dest_lon)+','+str(order.dest_lat)+'&show_fields=polyline')
     response = response.json()
     if(response['infocode'] != '10000'):
-        path = [{float(order.origin_lon), float(order.origin_lat)},
-                {float(order.dest_lon), float(order.dest_lat)}]
+        path = [{"longitude": float(order.origin_lon), "latitude": float(order.origin_lat)},
+                {"longitude": float(order.dest_lon), "latitude": float(order.dest_lat)}]
         distance = 9990000
         return (path, distance)
     distance = float([match.value for match in parse(
@@ -503,9 +503,9 @@ def get_order_info(request):  # 乘客获取当前订单信息
     driver_info = drivername[0:5]  # 司机前五位
     passenger_info = order.mypassenger[0:5]  # 乘客前五位
     product = Product.objects.filter(id=order.product).first()
-    god_ans = get_order_path(order)
-    distance = god_ans[1]
-    path = god_ans[0]
+    distance = order.distance
+    order_path = json.loads(order.order_path)
+    passenger_path = json.loads(order.passenger_path)
     money = distance * product.price_per_meter
     order.money = money
     order.save()
@@ -513,7 +513,7 @@ def get_order_info(request):  # 乘客获取当前订单信息
               'latitude': order.origin_lat, 'longitude': order.origin_lon}
     dest = {'name': order.dest_name,
             'latitude': order.dest_lat, 'longitude': order.dest_lon}
-    return JsonResponse({'errcode': errcode, 'driver_info': driver_info, 'passenger_info': passenger_info, 'path': path, 'money': money, 'origin': origin, 'dest': dest})
+    return JsonResponse({'errcode': errcode, 'driver_info': driver_info, 'passenger_info': passenger_info, 'order_path': order_path, 'passenger_path': passenger_path, 'money': money, 'origin': origin, 'dest': dest})
 
 
 def get_order_money(request):  # 乘客获取当前订单钱数
@@ -554,8 +554,10 @@ def get_history_order_info(request):  # 司乘获取历史订单
                         status = 2
                     else:
                         status = 1
+                    order_path = json.loads(order.order_path)
+                    passenger_path = json.loads(order.passenger_path)
                     orders_info.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time': start_time, 'end_time': end_time,
-                                        'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status})
+                                        'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status, 'order_path': order_path, 'passenger_path': passenger_path})
 
         elif user_job == 'driver':
             driver = Driver.objects.filter(name=user_name).first()
@@ -577,7 +579,7 @@ def get_history_order_info(request):  # 司乘获取历史订单
                     else:
                         status = 1
                     orders_info.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time': start_time, 'end_time': end_time,
-                                        'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status})
+                                        'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status, 'order_path': order.order_path, 'passenger_path': order.passenger_path})
         return JsonResponse({'orders': orders_info})
 
 
@@ -687,14 +689,14 @@ def driver_get_order(request):
             sess = reqjson['sess']
             user = SessionId.objects.filter(sessId=sess).first()
             if not user or user.job != 'driver':
-                return JsonResponse({'errcode': -10, 'info': ""})
+                return JsonResponse({'errcode': -10, 'info': "", 'passenger_path': []})
             driver = Driver.objects.filter(name=user.username).first()
             if not driver or driver.myorder_id == -1:
-                return JsonResponse({'errcode': -1, 'info': ""})
+                return JsonResponse({'errcode': -1, 'info': "", 'passenger_path': []})
             orderid = reqjson['order']
             order = Order.objects.filter(id=orderid).first()
             if not order:
-                return JsonResponse({'errcode': -1, 'info': ""})
+                return JsonResponse({'errcode': -1, 'info': "", 'passenger_path': []})
             passenger = Passenger.objects.filter(
                 name=order.mypassenger).first()
             info = passenger.name[0:5]
@@ -702,9 +704,15 @@ def driver_get_order(request):
             driver.status = 3
             passenger.save()
             driver.save()
+            passenger_path = get_passenger_path(order)
+            order.passenger_path = json.dumps(passenger_path)
+            order_path, distance = get_order_path(order)
+            order.order_path = json.dumps(order_path)
+            order.distance = distance
+            order.save()
             position = reqjson['position']
             driver_position[orderid] = position
-            return JsonResponse({'errcode': 0, 'info': info})
+            return JsonResponse({'errcode': 0, 'info': info, 'passenger_path': passenger_path})
         except Exception as e:
             logger.error(e, exc_info=True)
             return HttpResponse("error:{}".format(e), status=405)
@@ -717,34 +725,34 @@ def driver_confirm_aboard(request):
             sess = reqjson['sess']
             user = SessionId.objects.filter(sessId=sess).first()
             if not user or user.job != 'driver':
-                return JsonResponse({'errcode': -1, 'path': [], 'time': 0})
+                return JsonResponse({'errcode': -1, 'order_path': [], 'time': 0})
                 # sessionid需存在 & 是司机
             driver = Driver.objects.filter(name=user.username).first()
             if not driver or driver.myorder_id == -1:
-                return JsonResponse({'errcode': -1, 'path': [], 'time': 0})
+                return JsonResponse({'errcode': -1, 'order_path': [], 'time': 0})
                 # 对应driver存在
             orderid = reqjson['order']
             order = Order.objects.filter(id=orderid).first()
             if not order:
-                return JsonResponse({'errcode': -1, 'path': [], 'time': 0})
+                return JsonResponse({'errcode': -1, 'order_path': [], 'time': 0})
                 # order存在
             passenger = Passenger.objects.filter(
                 name=order.mypassenger).first()
             if not passenger:
-                return JsonResponse({'errcode': -1, 'path': [], 'time': 0})
+                return JsonResponse({'errcode': -1, 'order_path': [], 'time': 0})
                 # order存储passenger存在
             driver.status = 4
             passenger.status = 4
             driver.save()
             passenger.save()
             product = Product.objects.filter(id=passenger.product).first()
-            path, distance = get_order_path(order)
             speed = product.speed
-            esti_time = distance / speed
-            return JsonResponse({'errcode': 0, 'path': path, 'time': esti_time})
+            esti_time = order.distance / speed
+            order_path = json.loads(order.order_path)
+            return JsonResponse({'errcode': 0, 'order_path': order_path, 'time': esti_time})
         except Exception as e:
             logger.error(e, exc_info=True)
-            return JsonResponse({'errcode': -1, 'path': [], 'time': 0})
+            return JsonResponse({'errcode': -1, 'order_path': [], 'time': 0})
 
 
 def driver_confirm_arrive(request):
