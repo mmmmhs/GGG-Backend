@@ -500,8 +500,8 @@ def get_order_info(request):  # 乘客获取当前订单信息
     errcode = passenger.status
     mlogger.info(order)
     drivername = order.mydriver
-    driver_info = drivername[0:5]  # 司机前五位
-    passenger_info = order.mypassenger[0:5]  # 乘客前五位
+    driver_info = drivername[-5:]  # 司机前五位
+    passenger_info = order.mypassenger[-5:]  # 乘客前五位
     product = Product.objects.filter(id=order.product).first()
     distance = order.distance
     order_path = json.loads(order.order_path)
@@ -540,8 +540,8 @@ def get_history_order_info(request):  # 司乘获取历史订单
             orders = Order.objects.filter(mypassenger=user_name)
             for order in orders:
                 if order.mypassenger == user_name:
-                    passenger_info = order.mypassenger[0:5]
-                    driver_info = order.mydriver[0:5]
+                    passenger_info = order.mypassenger[-5:]
+                    driver_info = order.mydriver[-5:]
                     money = order.money
                     start_location = order.origin_name
                     start_time = order.start_time
@@ -564,8 +564,8 @@ def get_history_order_info(request):  # 司乘获取历史订单
             orders = Order.objects.filter(mydriver=user_name)
             for order in orders:
                 if order.mydriver == user_name:
-                    passenger_info = order.mypassenger[0:5]
-                    driver_info = order.mydriver[0:5]
+                    passenger_info = order.mypassenger[-5:]
+                    driver_info = order.mydriver[-5:]
                     money = order.money
                     start_location = order.origin_name
                     start_time = order.start_time
@@ -701,7 +701,7 @@ def driver_get_order(request):
                 return JsonResponse({'errcode': -1, 'info': "", 'passenger_path': []})
             passenger = Passenger.objects.filter(
                 name=order.mypassenger).first()
-            info = passenger.name[0:5]
+            info = passenger.name[-5:]
             passenger.status = 3
             driver.status = 3
             passenger.save()
@@ -945,7 +945,7 @@ def give_score(request):
         if not driver:
             return JsonResponse({'errcode': -1})
         score = reqjson['score']
-        driver.score = driver.score * driver.scorenum + score
+        driver.score = (driver.score * driver.scorenum + score) / (driver.scorenum + 1)
         driver.scorenum = driver.scorenum + 1
         driver.save()
         return JsonResponse({'errcode': 0})

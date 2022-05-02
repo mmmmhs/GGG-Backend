@@ -242,7 +242,7 @@ class GGG_test(TestCase):
             '/api/get_history_order_info', data={'sess': '963'})
         orders = response.json()['orders']
         driver = orders[0]['driver_info']
-        self.assertEqual(driver, 'ashua')
+        self.assertEqual(driver, 'shuai')
         status = orders[0]['status']
         self.assertEqual(status, 0)
         res1 = self.client.get(
