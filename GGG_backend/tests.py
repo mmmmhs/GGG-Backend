@@ -1,6 +1,4 @@
-from distutils.log import error
 import decimal
-from urllib import response
 from django.test import TestCase
 from GGG_backend.models import Driver, Order, Passenger, SessionId, Product, Area, Setting
 from unittest import mock

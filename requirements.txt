@@ -1,9 +1,7 @@
 Django==4.0.3
-cryptography==36.0.1
 requests==2.27.1
 pytest-django==4.5.2
 coverage==6.3.2
 pytest==7.0.1
-django-crontab==0.7.1
 daphne==3.0.2
 jsonpath-ng==1.5.3

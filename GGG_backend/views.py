@@ -1,6 +1,6 @@
 from jsonpath_ng import jsonpath, parse
 import json
-from logging import exception
+# from logging import exception
 import time
 from django.forms.models import model_to_dict
 # Create your views here.
@@ -224,7 +224,7 @@ def init_match_list(area, product, name, job):
     elif job == "driver" and name not in match_list[area][product]['driver_unmatched']:
         match_list[area][product]['driver_unmatched'].append(name)
 
-# 司乘匹配 传入 独乘产品id openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
+# 司乘匹配 传入开城围栏id 独乘产品id openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
 # 修改order.status mydriver
 
 
@@ -479,9 +479,9 @@ def passenger_order(request):
         errcode = passenger.status
         drivername = order.mydriver
         driver = Driver.objects.filter(name=drivername).first()
-        if not driver or driver.status <= 2 or passenger.status <= 2:
-            return JsonResponse({'errcode': errcode})
-        elif driver_position[order_id]['latitude'] and driver_position[order_id]['longitude']:
+        if (not driver) or driver.status <= 2 or passenger.status <= 2:
+            return JsonResponse({'errcode': errcode})    
+        elif order_id in driver_position and driver_position[order_id]['latitude'] and driver_position[order_id]['longitude']:
             return JsonResponse({'errcode': errcode, 'driver': {'latitude': driver_position[order_id]['latitude'], 'longitude': driver_position[order_id]['longitude']}})
         else:
             return JsonResponse({'errcode': errcode})  # ????
@@ -578,8 +578,10 @@ def get_history_order_info(request):  # 司乘获取历史订单
                         status = 2
                     else:
                         status = 1
+                    order_path = json.loads(order.order_path)
+                    passenger_path = json.loads(order.passenger_path)
                     orders_info.append({'driver_info': driver_info, 'passenger_info': passenger_info, 'start_time': start_time, 'end_time': end_time,
-                                        'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status, 'order_path': order.order_path, 'passenger_path': order.passenger_path})
+                                        'money': money, 'start_location': start_location, 'end_location': end_location, 'status': status, 'order_path': order_path, 'passenger_path': passenger_path})
         return JsonResponse({'orders': orders_info})
 
 
@@ -812,7 +814,7 @@ def passenger_cancel(request):
                 passenger.status = 0
                 passenger.save()
             return JsonResponse({'errcode': 0})
-        except exception as e:
+        except Exception as e:
             logger.error(e, exc_info=True)
             return JsonResponse({'errcode': -1})
 
@@ -986,5 +988,4 @@ def set_user_info(request):
                 driver.save()
                 return JsonResponse({'errcode': 0})
             else:
-                driver.save()
-                return JsonResponse({'errcode': -10})
+                return HttpResponse("product{}不存在".format(product), status = 405)

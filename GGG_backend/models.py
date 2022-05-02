@@ -59,8 +59,8 @@ class Order(models.Model):
     end_time = models.FloatField(default=0, blank=True)
     product = models.IntegerField(default=-1,blank=True)
     area = models.IntegerField(default=0, blank=True)
-    order_path = models.TextField(default="", blank=True) # [{longitude: num, latitude: num}...]
-    passenger_path = models.TextField(default="", blank=True) # [{longitude: num, latitude: num}...]
+    order_path = models.TextField(default="", blank=True) # '[{"longitude": num, "latitude": num}...]'
+    passenger_path = models.TextField(default="", blank=True) # '[{"longitude": num, "latitude": num}...]'
     distance = models.FloatField(default=0, blank=True)
 
     # 0订单发起，正在等待司机接单 1司乘匹配完成 2订单结束
@@ -75,7 +75,7 @@ class Product(models.Model):
 
 
 class Setting(models.Model):
-    products = models.CharField(max_length=1000, default='')
+    products = models.CharField(max_length=1000, default='') # "1,2,3"
 
 class Area(models.Model):
     name = models.CharField(max_length=100, default="")
