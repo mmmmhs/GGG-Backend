@@ -42,8 +42,6 @@ driver_position = {
 
 def start_pressure_test(request):
     if request.method == 'POST':
-        Product.objects.create(name='1')
-        Area.objects.create(name='1')
         i = 0
         while i < 100:
             str1 = 'p'+str(i)
