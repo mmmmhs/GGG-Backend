@@ -61,6 +61,7 @@ def end_pressure_test(request):
         Area.objects.filter(name='1').delete()
         Passenger.objects.all().delete()
         Driver.objects.all().delete()
+        Order.objects.all().delete()
         SessionId.objects.all().delete()
     return JsonResponse({'errcode': 0})
 
