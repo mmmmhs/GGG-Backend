@@ -31,7 +31,7 @@ match_list = {}
                     driver_unmatched : [],  # 待匹配司机池子
                     passenger_matched : [],  # 已匹配乘客池子
                     driver_matched : [] # 已匹配司机池子
-                  }
+                }
       }          
 }
 # openid
@@ -50,14 +50,14 @@ def start_pressure_test(request):
             str1 = 'p'+str(i)
             str2 = 'd'+str(i)
             pl.append(Passenger(name=str1))
-            dl.append(Driver(name=str2))
+            dl.append(Driver(name=str2,product=1))
             sl.append(SessionId(sessId=str1, username=str1, job="passenger"))
             sl.append(SessionId(sessId=str2, username=str2, job="driver"))
             i = i + 1
         Passenger.objects.bulk_create(pl)
         Driver.objects.bulk_create(dl)
         SessionId.objects.bulk_create(sl)
-        
+
         return JsonResponse({'errcode': 0})
 
 
