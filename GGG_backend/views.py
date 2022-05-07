@@ -43,15 +43,21 @@ driver_position = {
 def start_pressure_test(request):
     if request.method == 'POST':
         i = 0
+        pl=[]
+        dl=[]
+        sl=[]
         while i < 100:
             str1 = 'p'+str(i)
             str2 = 'd'+str(i)
-            Passenger.objects.create(name=str1)
-            Driver.objects.create(name=str2)
-            SessionId.objects.create(
-                sessId=str1, username=str1, job="passenger")
-            SessionId.objects.create(sessId=str2, username=str2, job="driver")
+            pl.append(Passenger(name=str1))
+            dl.append(Driver(name=str2))
+            sl.append(SessionId(sessId=str1, username=str1, job="passenger"))
+            sl.append(SessionId(sessId=str2, username=str2, job="driver"))
             i = i + 1
+        Passenger.objects.bulk_create(pl)
+        Driver.objects.bulk_create(dl)
+        SessionId.objects.bulk_create(sl)
+        
         return JsonResponse({'errcode': 0})
 
 
@@ -446,8 +452,9 @@ def passenger_order(request):
         if(area_id[0] != area_id[1] or area_id[0] == -1 or area_id[1] == -1):
             return JsonResponse({'errcode': 0, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
-                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单
+                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单                          
         passenger.myorder_id = order.id
+        
         order_id = order.id
         passenger.save()
 
