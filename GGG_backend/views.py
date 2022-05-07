@@ -31,7 +31,7 @@ match_list = {}
                     driver_unmatched : [],  # 待匹配司机池子
                     passenger_matched : [],  # 已匹配乘客池子
                     driver_matched : [] # 已匹配司机池子
-                  }
+                }
       }          
 }
 # openid
@@ -42,18 +42,22 @@ driver_position = {
 
 def start_pressure_test(request):
     if request.method == 'POST':
-        Product.objects.create(name='1')
-        Area.objects.create(name='1')
         i = 0
+        pl=[]
+        dl=[]
+        sl=[]
         while i < 100:
             str1 = 'p'+str(i)
             str2 = 'd'+str(i)
-            Passenger.objects.create(name=str1)
-            Driver.objects.create(name=str2)
-            SessionId.objects.create(
-                sessId=str1, username=str1, job="passenger")
-            SessionId.objects.create(sessId=str2, username=str2, job="driver")
+            pl.append(Passenger(name=str1))
+            dl.append(Driver(name=str2,product=1))
+            sl.append(SessionId(sessId=str1, username=str1, job="passenger"))
+            sl.append(SessionId(sessId=str2, username=str2, job="driver"))
             i = i + 1
+        Passenger.objects.bulk_create(pl)
+        Driver.objects.bulk_create(dl)
+        SessionId.objects.bulk_create(sl)
+
         return JsonResponse({'errcode': 0})
 
 
@@ -63,6 +67,7 @@ def end_pressure_test(request):
         Area.objects.filter(name='1').delete()
         Passenger.objects.all().delete()
         Driver.objects.all().delete()
+        Order.objects.all().delete()
         SessionId.objects.all().delete()
     return JsonResponse({'errcode': 0})
 
@@ -224,7 +229,7 @@ def init_match_list(area, product, name, job):
     elif job == "driver" and name not in match_list[area][product]['driver_unmatched']:
         match_list[area][product]['driver_unmatched'].append(name)
 
-# 司乘匹配 传入开城围栏id 独乘产品id openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
+# 司乘匹配 传入开城围栏id 独乘产品id openid和job 返回0:匹配成功 -1:错误
 # 修改order.status mydriver
 
 
@@ -236,18 +241,19 @@ def match(area, product, openid, job):
         passenger_matched = match_list[area][product]['passenger_matched']
         if job == "passenger":
             if len(driver_unmatched) > 0:
+                driver_name = driver_unmatched.pop(0)
+                passenger_name = passenger_unmatched.pop(0)
                 user = Passenger.objects.filter(name=openid).first()
                 order = Order.objects.filter(id=user.myorder_id).first()
                 if not order:
-                    return -2
-                order.mydriver = driver_unmatched[0]
+                    return -1
+                order.mydriver = driver_name
                 order.match_time = time.time()
                 order.status = 1
-                driver = Driver.objects.filter(
-                    name=driver_unmatched[0]).first()
+                driver = Driver.objects.filter(name=driver_name).first()
                 driver.myorder_id = order.id
-                driver_matched.append(driver_unmatched.pop(0))
-                passenger_matched.append(passenger_unmatched.pop(0))
+                driver_matched.append(driver_name)
+                passenger_matched.append(passenger_name)
                 driver.status = 2
                 user.status = 2
                 user.save()
@@ -258,9 +264,10 @@ def match(area, product, openid, job):
                 return -1
         elif job == "driver":
             if len(passenger_unmatched) > 0:
+                driver_name = driver_unmatched.pop(0)
+                passenger_name = passenger_unmatched.pop(0)
                 user = Driver.objects.filter(name=openid).first()
-                passenger = Passenger.objects.filter(
-                    name=passenger_unmatched[0]).first()
+                passenger = Passenger.objects.filter(name=passenger_name).first()
                 order_id = passenger.myorder_id
                 order = Order.objects.filter(id=order_id).first()
                 order.mydriver = user.name
@@ -269,8 +276,8 @@ def match(area, product, openid, job):
                 order.status = 1
                 user.status = 2
                 passenger.status = 2
-                driver_matched.append(driver_unmatched.pop(0))
-                passenger_matched.append(passenger_unmatched.pop(0))
+                driver_matched.append(driver_name)
+                passenger_matched.append(passenger_name)
                 user.save()
                 passenger.save()
                 order.save()
@@ -278,11 +285,11 @@ def match(area, product, openid, job):
             else:
                 return -1
         else:
-            return -2
+            return -1
     except Exception as e:
         logger.info(openid)
         logger.error(e, exc_info=True)
-        return -2
+        return -1
 
 # 检查id对应订单是否超时
 # 轮询时调用
@@ -447,8 +454,9 @@ def passenger_order(request):
         if(area_id[0] != area_id[1] or area_id[0] == -1 or area_id[1] == -1):
             return JsonResponse({'errcode': 0, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
-                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单
+                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单                          
         passenger.myorder_id = order.id
+        
         order_id = order.id
         passenger.save()
 

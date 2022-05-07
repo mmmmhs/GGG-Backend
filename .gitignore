@@ -29,3 +29,4 @@ django_storage
 staticfiles
 static_dic/admin/
 *.log
+config/
