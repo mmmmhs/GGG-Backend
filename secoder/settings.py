@@ -89,6 +89,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'django_storage' / 'db.sqlite3',
+        'CONN_MAX_AGE':None,
         'OPTIONS': {
                 'timeout': 20,
             }
