@@ -9,7 +9,8 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
-
+import os
+import json
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -85,16 +86,31 @@ CRONJOBS = [('* * */1 * *', 'login.update.daily_update')]
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
+if os.path.isfile(BASE_DIR/'config'/"conf.json"):
+    with open(BASE_DIR/'config'/"conf.json", "r") as f:
+        env = json.load(f)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': env["MYSQL_NAME"],
+            'USER': env["MYSQL_USER"],
+            'PASSWORD': env["MYSQL_PASSWORD"],
+            'HOST': env["MYSQL_HOST"],
+            'PORT': env["MYSQL_PORT"],
+            'OPTIONS': {'charset': 'utf8mb4'},
+        },
+    }
+else:
+    DATABASES = {
+        'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'django_storage' / 'db.sqlite3',
         'CONN_MAX_AGE':None,
         'OPTIONS': {
                 'timeout': 20,
             }
+        }   
     }
-}
 
 
 # Password validation
