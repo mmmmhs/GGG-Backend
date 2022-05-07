@@ -946,7 +946,7 @@ def give_score(request):
             return JsonResponse({'errcode': -1})
         score = reqjson['score']
         driver.score = (driver.score * driver.scorenum + score) / (driver.scorenum + 1)
-        driver.scorenum = driver.scorenum + 1
+        driver.scorenum += 1
         driver.save()
         return JsonResponse({'errcode': 0})
 
