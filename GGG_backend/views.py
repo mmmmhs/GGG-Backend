@@ -229,7 +229,7 @@ def init_match_list(area, product, name, job):
     elif job == "driver" and name not in match_list[area][product]['driver_unmatched']:
         match_list[area][product]['driver_unmatched'].append(name)
 
-# 司乘匹配 传入开城围栏id 独乘产品id openid和job 返回0:匹配成功 -1:需要等待 -2:参数错误
+# 司乘匹配 传入开城围栏id 独乘产品id openid和job 返回0:匹配成功 -1:错误
 # 修改order.status mydriver
 
 
@@ -241,18 +241,19 @@ def match(area, product, openid, job):
         passenger_matched = match_list[area][product]['passenger_matched']
         if job == "passenger":
             if len(driver_unmatched) > 0:
+                driver_name = driver_unmatched.pop(0)
+                passenger_name = passenger_unmatched.pop(0)
                 user = Passenger.objects.filter(name=openid).first()
                 order = Order.objects.filter(id=user.myorder_id).first()
                 if not order:
-                    return -2
-                order.mydriver = driver_unmatched[0]
+                    return -1
+                order.mydriver = driver_name
                 order.match_time = time.time()
                 order.status = 1
-                driver = Driver.objects.filter(
-                    name=driver_unmatched[0]).first()
+                driver = Driver.objects.filter(name=driver_name).first()
                 driver.myorder_id = order.id
-                driver_matched.append(driver_unmatched.pop(0))
-                passenger_matched.append(passenger_unmatched.pop(0))
+                driver_matched.append(driver_name)
+                passenger_matched.append(passenger_name)
                 driver.status = 2
                 user.status = 2
                 user.save()
@@ -263,9 +264,10 @@ def match(area, product, openid, job):
                 return -1
         elif job == "driver":
             if len(passenger_unmatched) > 0:
+                driver_name = driver_unmatched.pop(0)
+                passenger_name = passenger_unmatched.pop(0)
                 user = Driver.objects.filter(name=openid).first()
-                passenger = Passenger.objects.filter(
-                    name=passenger_unmatched[0]).first()
+                passenger = Passenger.objects.filter(name=passenger_name).first()
                 order_id = passenger.myorder_id
                 order = Order.objects.filter(id=order_id).first()
                 order.mydriver = user.name
@@ -274,8 +276,8 @@ def match(area, product, openid, job):
                 order.status = 1
                 user.status = 2
                 passenger.status = 2
-                driver_matched.append(driver_unmatched.pop(0))
-                passenger_matched.append(passenger_unmatched.pop(0))
+                driver_matched.append(driver_name)
+                passenger_matched.append(passenger_name)
                 user.save()
                 passenger.save()
                 order.save()
@@ -283,11 +285,11 @@ def match(area, product, openid, job):
             else:
                 return -1
         else:
-            return -2
+            return -1
     except Exception as e:
         logger.info(openid)
         logger.error(e, exc_info=True)
-        return -2
+        return -1
 
 # 检查id对应订单是否超时
 # 轮询时调用
