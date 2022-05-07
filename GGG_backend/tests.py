@@ -7,6 +7,11 @@ from GGG_backend.views import get_3rd_session
 
 
 class GGG_test(TestCase):
+
+    setting_id = 0
+    product_id = 0
+    product_id2 = 0
+
     def setUp(self):
         # 以下用于测试注册
         SessionId.objects.create(
@@ -22,20 +27,25 @@ class GGG_test(TestCase):
             sessId="369", username="arui", job="passenger")
         Passenger.objects.create(name="arui", status=0)
         SessionId.objects.create(sessId="963", username='ashuai', job='driver')
-        Driver.objects.create(name="ashuai", status=0, product=1)
-        # Order.objects.create(mypassenger="arui", money=100)
-        # order = Order.objects.filter(mypassenger='arui').first()
-        # setup_order_id = order.id
+        d = Driver.objects.create(name="ashuai", status=0)
 
         # Product
-        Product.objects.create(name='senpai', price_per_meter=810, speed=1919)
-        Product.objects.create(name='mur', price_per_meter=810, speed=1919)
-        Product.objects.create(name='kmr', price_per_meter=810, speed=1919)
+        p1 = Product.objects.create(name='senpai', price_per_meter=810, speed=1919)
+        p2 = Product.objects.create(name='mur', price_per_meter=810, speed=1919)
+        p3 = Product.objects.create(name='kmr', price_per_meter=810, speed=1919)
+        print(p1.id, p2.id, p3.id)
+        self.product_id = p1.id
 
         Area.objects.create(
             name="枝江", border='[{"lat": 0, "lng": 0}, {"lat": 0, "lng": 1000}, {"lat": 1000, "lng": 1000}, {"lat": 1000, "lng": 0}]')
 
-        Setting.objects.create(products="1,2,3")
+        _str = str(p1.id) + ',' + str(p2.id) + ',' + str(p3.id)
+        s1 = Setting.objects.create(products=_str)
+        print(s1.id)
+        self.setting_id = s1.id
+
+        d.product = self.product_id
+        d.save()
 
     @patch("GGG_backend.views.get_wx_response")
     def test_login_passenger(self, mock_get_wx_response):
@@ -115,7 +125,7 @@ class GGG_test(TestCase):
         res1 = self.client.post('/api/set_user_info', data={
                                 'sess': "369", 'name': "li", 'phone': 1234567890}, content_type="application/json")
         res2 = self.client.post('/api/set_user_info', data={'sess': "963", 'name': "wu", 'phone': 9876543210,
-                                'carinfo': "五菱宏光", 'carcolor': "塔菲色", 'carnum': "2200", 'product': 1}, content_type="application/json")
+                                'carinfo': "五菱宏光", 'carcolor': "塔菲色", 'carnum': "2200", 'product': self.product_id}, content_type="application/json")
         # 司机发单
         response = self.client.post(
             "/api/driver_order", data={'sess': "963", 'origin': {'latitude': '39.935119', 'longitude': '116.423963'}}, content_type="application/json")
@@ -140,13 +150,13 @@ class GGG_test(TestCase):
         # 乘客叫车
         response = self.client.post("/api/passenger_order", data={'sess': '369', 'origin': {
                                     'name': 'Beijing', 'latitude': '39.925119', 'longitude': '116.423963'}, 'dest': {
-            'name': 'beijing', 'latitude': '39.915119', 'longitude': '116.403963'}, 'product': 1}, content_type='application/json')
+            'name': 'beijing', 'latitude': '39.915119', 'longitude': '116.403963'}, 'product': self.product_id}, content_type='application/json')
         code = response.json()['errcode']
         order_id = response.json()['order']
         order = Order.objects.filter(id=order_id).first()
         self.assertEqual(code, 0)
         product = order.product
-        self.assertEqual(product, 1)
+        self.assertEqual(product, self.product_id)
         dest_name = order.dest_name
         self.assertEqual(dest_name, 'beijing')
         origin_name = order.origin_name
@@ -208,7 +218,7 @@ class GGG_test(TestCase):
         self.assertEqual(res1.json()['carinfo'], "五菱宏光")
         self.assertEqual(res1.json()['carcolor'], "塔菲色")
         self.assertEqual(res1.json()['carnum'], "2200")
-        self.assertEqual(res1.json()['product'], 1)
+        self.assertEqual(res1.json()['product'], self.product_id)
         self.assertEqual(res1.json()['score'], 10)
         # 司机确认乘客到达
         order = Order.objects.filter(mypassenger='arui').first()
@@ -307,13 +317,13 @@ class GGG_test(TestCase):
         # 乘客叫车
         response = self.client.post("/api/passenger_order", data={'sess': '369', 'origin': {
                                     'name': 'Beijing', 'latitude': '39.925119', 'longitude': '116.423963'}, 'dest': {
-            'name': 'beijing', 'latitude': '39.915119', 'longitude': '116.403963'}, 'product': 1}, content_type='application/json')
+            'name': 'beijing', 'latitude': '39.915119', 'longitude': '116.403963'}, 'product': self.product_id}, content_type='application/json')
         code = response.json()['errcode']
         order_id = response.json()['order']
         order = Order.objects.filter(id=order_id).first()
         self.assertEqual(code, 0)
         product = order.product
-        self.assertEqual(product, 1)
+        self.assertEqual(product, self.product_id)
         dest_name = order.dest_name
         self.assertEqual(dest_name, 'beijing')
         origin_name = order.origin_name
@@ -363,13 +373,13 @@ class GGG_test(TestCase):
         # 乘客叫车
         response = self.client.post("/api/passenger_order", data={'sess': '369', 'origin': {
                                     'name': 'Beijing', 'latitude': '39.925119', 'longitude': '116.423963'}, 'dest': {
-            'name': 'beijing', 'latitude': '39.915119', 'longitude': '116.403963'}, 'product': 1}, content_type='application/json')
+            'name': 'beijing', 'latitude': '39.915119', 'longitude': '116.403963'}, 'product': self.product_id}, content_type='application/json')
         code = response.json()['errcode']
         order_id = response.json()['order']
         order = Order.objects.filter(id=order_id).first()
         self.assertEqual(code, 0)
         product = order.product
-        self.assertEqual(product, 1)
+        self.assertEqual(product, self.product_id)
         dest_name = order.dest_name
         self.assertEqual(dest_name, 'beijing')
         origin_name = order.origin_name
@@ -427,16 +437,16 @@ class GGG_test(TestCase):
 
     def test_driver_choose_product(self):
         res = self.client.post('/api/driver_choose_product',
-                               data={'sess': "963", 'product': 2}, content_type="application/json")
+                               data={'sess': "963", 'product': self.product_id2}, content_type="application/json")
         driver = Driver.objects.filter(name="ashuai").first()
-        self.assertEqual(driver.product, 2)
+        self.assertEqual(driver.product, self.product_id2)
         self.assertEqual(res.json()['errcode'], 0)
 
     def test_user_info_before_match(self):
         res1 = self.client.post('/api/set_user_info', data={
                                 'sess': "369", 'name': "li", 'phone': 1234567890}, content_type="application/json")
         res2 = self.client.post('/api/set_user_info', data={'sess': "963", 'name': "wu", 'phone': 9876543210,
-                                'carinfo': "五菱宏光", 'carcolor': "塔菲色", 'carnum': "2200", 'product': 1}, content_type="application/json")
+                                'carinfo': "五菱宏光", 'carcolor': "塔菲色", 'carnum': "2200", 'product': self.product_id}, content_type="application/json")
         self.assertEqual(res1.json()['errcode'], 0)
         self.assertEqual(res2.json()['errcode'], 0)
         res3 = self.client.get('/api/get_user_info', data={'sess': "369"})
@@ -450,6 +460,6 @@ class GGG_test(TestCase):
         self.assertEqual(res4.json()['carinfo'], "五菱宏光")
         self.assertEqual(res4.json()['carcolor'], "塔菲色")
         self.assertEqual(res4.json()['carnum'], "2200")
-        self.assertEqual(res4.json()['product'], 1)
+        self.assertEqual(res4.json()['product'], self.product_id)
 
 

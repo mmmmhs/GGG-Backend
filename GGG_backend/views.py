@@ -152,7 +152,7 @@ def product_list(request):
             if not SessionId.objects.filter(sessId=sess).first():
                 return JsonResponse({'errcode': -2, 'product': []})
             else:
-                product_str = Setting.objects.filter(id=1).first().products
+                product_str = Setting.objects.exclude(products='').first().products
                 product_list = product_str.split(',')
                 array = []
                 for i in product_list:
@@ -996,4 +996,6 @@ def set_user_info(request):
                 driver.save()
                 return JsonResponse({'errcode': 0})
             else:
+                logger.info("product:{}".format(product))
                 return HttpResponse("product{}不存在".format(product), status = 405)
+               
