@@ -5,3 +5,4 @@ coverage==6.3.2
 pytest==7.0.1
 daphne==3.0.2
 jsonpath-ng==1.5.3
+mysqlclient==2.1.0
