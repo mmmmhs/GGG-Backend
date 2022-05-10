@@ -104,7 +104,7 @@ def show_car(request):
             if driver.status == 1:
                 driver_lat = float(driver.lat)
                 driver_lon = float(driver.lon)
-                if (((111 * (latitude - driver_lat)) ** 2 + (111 * math.cos(latitude / (180 * 3.14159)) * (longitude - driver_lon)) ** 2) < 10):
+                if (((111 * (float(latitude) - driver_lat)) ** 2 + (111 * math.cos(float(latitude) / (180 * 3.14159)) * (float(longitude) - driver_lon)) ** 2) < 10):
                     available_drivers.append((driver.lat, driver.lon))
         return JsonResponse({'errcode': 0, 'car': available_drivers})
 
