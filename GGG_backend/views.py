@@ -183,13 +183,10 @@ def driver_choose_product(request):
 # 判断点是否在开城围栏中
 
 
-def check_area(area_id, lat, lng):
+def check_area(border, lat, lng):
     lat = float(lat)
     lng = float(lng)
-    area = Area.objects.filter(id=area_id).first()
-    if not area:
-        raise Exception('开城围栏{}不存在'.format(area_id))
-    pointlist = json.loads(area.border)
+    pointlist = json.loads(border)
     crossing = 0
     for i in range(len(pointlist) - 1):
         # 避免与端点相交两次
@@ -424,22 +421,24 @@ def passenger_order(request):
         origin = reqjson['origin']
         dest = reqjson['dest']  # name latitude longitude
         product = reqjson['product']
-        areas = Area.objects.all()
+        areas = Area.objects.all().values()
         area_id = [-1, -1]
         area_name = ["", ""]
         sessionId = SessionId.objects.filter(sessId=sess).only("username").first()
         passengername = sessionId.username
+        flag1,flag2=True,True
         for area in areas:
-            if(check_area(area.id, origin['latitude'], origin['longitude'])):
-                area_id[0] = area.id
-                area_name[0] = area.name
+            if(flag1 and check_area(area['border'], origin['latitude'], origin['longitude'])):
+                area_id[0] = area['id']
+                area_name[0] = area['name']
+                flag1 = False
+            if(flag2 and check_area(area['border'], dest['latitude'], dest['longitude'])):
+                area_id[1] = area['id']
+                area_name[1] = area['name']
+                flag2=False
+            if(not (flag2 or flag1)):
                 break
-        for area in areas:
-            if(check_area(area.id, dest['latitude'], dest['longitude'])):
-                area_id[1] = area.id
-                area_name[1] = area.name
-                break
-        if(area_id[0] != area_id[1] or area_id[0] == -1 or area_id[1] == -1):
+        if(flag1 or flag1):
             return JsonResponse({'errcode': 0, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
                                      dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单                          
@@ -619,7 +618,7 @@ def driver_order(request):
             return HttpResponse("error:{}".format(e), status=405)
         origin_latitude = origin['latitude']
         origin_longitude = origin['longitude']
-        areas = Area.objects.all()
+        areas = Area.objects.all().values()
         area_id = -1
         area_name = ""
         errcode = -1
@@ -634,9 +633,9 @@ def driver_order(request):
             driver.lon = origin['longitude']
             driver.save()
             for area in areas:
-                if (check_area(area.id, origin_latitude, origin_longitude)):
-                    area_id = area.id
-                    area_name = area.name
+                if (check_area(area['border'], origin_latitude, origin_longitude)):
+                    area_id = area['id']
+                    area_name = area['name']
                     break
             if (area_id == -1):
                 return JsonResponse({'errcode': errcode, 'area': area_id, 'info': area_name})
