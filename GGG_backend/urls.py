@@ -25,4 +25,5 @@ urlpatterns = [
     path('get_user_info', views.get_user_info, name='get_user_info'),
     path('set_user_info', views.set_user_info, name='set_user_info'),
     path('give_score', views.give_score, name='give_score'),
+    path('show_car', views.show_car, name='show_car'),
 ]
