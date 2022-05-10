@@ -35,6 +35,7 @@ class GGG_test(TestCase):
         p3 = Product.objects.create(name='kmr', price_per_meter=810, speed=1919)
         print(p1.id, p2.id, p3.id)
         self.product_id = p1.id
+        self.product_id2 = p2.id
 
         Area.objects.create(
             name="枝江", border='[{"lat": 0, "lng": 0}, {"lat": 0, "lng": 1000}, {"lat": 1000, "lng": 1000}, {"lat": 1000, "lng": 0}]')
@@ -446,7 +447,7 @@ class GGG_test(TestCase):
         res1 = self.client.post('/api/set_user_info', data={
                                 'sess': "369", 'name': "li", 'phone': 1234567890}, content_type="application/json")
         res2 = self.client.post('/api/set_user_info', data={'sess': "963", 'name': "wu", 'phone': 9876543210,
-                                'carinfo': "五菱宏光", 'carcolor': "塔菲色", 'carnum': "2200", 'product': self.product_id}, content_type="application/json")
+                                'carinfo': "五菱宏光", 'carcolor': "塔菲色", 'carnum': "2200", 'product': self.product_id2}, content_type="application/json")
         self.assertEqual(res1.json()['errcode'], 0)
         self.assertEqual(res2.json()['errcode'], 0)
         res3 = self.client.get('/api/get_user_info', data={'sess': "369"})
@@ -460,7 +461,7 @@ class GGG_test(TestCase):
         self.assertEqual(res4.json()['carinfo'], "五菱宏光")
         self.assertEqual(res4.json()['carcolor'], "塔菲色")
         self.assertEqual(res4.json()['carnum'], "2200")
-        self.assertEqual(res4.json()['product'], self.product_id)
+        self.assertEqual(res4.json()['product'], self.product_id2)
 
     def test_pressure(self):
         res1 = self.client.post('/api/start_pressure_test', data={'num': 101}, content_type="application/json")
