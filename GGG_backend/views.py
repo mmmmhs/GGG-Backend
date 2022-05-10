@@ -427,22 +427,10 @@ def passenger_order(request):
         areas = Area.objects.all()
         area_id = [-1, -1]
         area_name = ["", ""]
-        sessionId = SessionId.objects.filter(sessId=sess).first()
+        sessionId = SessionId.objects.filter(sessId=sess).only("username").first()
         passengername = sessionId.username
-        passenger = Passenger.objects.filter(name=passengername).first()
-        errcode = 0
-        if not passenger or sessionId.job == 'driver':
-            errcode = -10
-            return JsonResponse({'errcode': errcode})
-        if passenger.status != 0:  # 已有订单
-            errcode = -1
-            return JsonResponse({'errcode': errcode})
-        passenger.status = 1  # 乘客状态0->1
-        passenger.lat = origin['latitude']
-        passenger.lon = origin['longitude']
-        passenger.product = product
         for area in areas:
-            if(check_area(area.id, passenger.lat, passenger.lon)):
+            if(check_area(area.id, origin['latitude'], origin['longitude'])):
                 area_id[0] = area.id
                 area_name[0] = area.name
                 break
@@ -455,15 +443,12 @@ def passenger_order(request):
             return JsonResponse({'errcode': 0, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
                                      dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单                          
-        passenger.myorder_id = order.id
-        
-        order_id = order.id
-        passenger.save()
-
+        if(Passenger.objects.filter(name=passengername).update(myorder_id = order.id,product = product,lon = origin['longitude'],lat = origin['latitude'],status = 1)==0):
+            return JsonResponse({'errcode':-1})
         init_match_list(int(area_id[0]), int(product),
                         passengername, 'passenger')
         match(int(area_id[0]), int(product), passengername, 'passenger')
-        return JsonResponse({'errcode': errcode, 'order': order_id, 'area': area_id, 'info': area_name})
+        return JsonResponse({'errcode': 0, 'order': order.id, 'area': area_id, 'info': area_name})
 
     elif(request.method == 'GET'):  # 乘客询问订单状态
         sess = request.GET['sess']
