@@ -2,6 +2,7 @@ from jsonpath_ng import jsonpath, parse
 import json
 # from logging import exception
 import time
+import math
 from django.forms.models import model_to_dict
 # Create your views here.
 from django.http import HttpResponse, JsonResponse
@@ -45,14 +46,14 @@ def start_pressure_test(request):
         reqjson = json.loads(request.body)
         num = reqjson['num']
         i = 0
-        pl=[]
-        dl=[]
-        sl=[]
+        pl = []
+        dl = []
+        sl = []
         while i < num:
             str1 = 'p'+str(i)
             str2 = 'd'+str(i)
             pl.append(Passenger(name=str1))
-            dl.append(Driver(name=str2,product=1))
+            dl.append(Driver(name=str2, product=1))
             sl.append(SessionId(sessId=str1, username=str1, job="passenger"))
             sl.append(SessionId(sessId=str2, username=str2, job="driver"))
             i = i + 1
@@ -86,6 +87,26 @@ def get_3rd_session(session_key, openId, job):
     encrypted_data = hashlib.new(
         'md5', bytes(data, encoding="utf8")).hexdigest()
     return encrypted_data
+
+
+def show_car(request):
+    if(request.method == 'GET'):
+        try:
+            sess = request.GET['sess']
+            longitude = request.GET['longitude']
+            latitude = request.GET['latitude']
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return JsonResponse({'errcode': -1, 'cars': []})
+        available_drivers = []
+        drivers = Driver.objects.all()
+        for driver in drivers:
+            if driver.status == 1:
+                driver_lat = float(driver.lat)
+                driver_lon = float(driver.lon)
+                if (((111 * (latitude - driver_lat)) ** 2 + (111 * math.cos(latitude / (180 * 3.14159)) * (longitude - driver_lon)) ** 2) < 10):
+                    available_drivers.append((driver.lat, driver.lon))
+        return JsonResponse({'errcode': 0, 'car': available_drivers})
 
 
 def login(request):
@@ -154,7 +175,8 @@ def product_list(request):
             if not SessionId.objects.filter(sessId=sess).first():
                 return JsonResponse({'errcode': -2, 'product': []})
             else:
-                product_str = Setting.objects.exclude(products='').first().products
+                product_str = Setting.objects.exclude(
+                    products='').first().products
                 product_list = product_str.split(',')
                 array = []
                 for i in product_list:
@@ -266,7 +288,8 @@ def match(area, product, openid, job):
                 driver_name = driver_unmatched.pop(0)
                 passenger_name = passenger_unmatched.pop(0)
                 user = Driver.objects.filter(name=openid).first()
-                passenger = Passenger.objects.filter(name=passenger_name).first()
+                passenger = Passenger.objects.filter(
+                    name=passenger_name).first()
                 order_id = passenger.myorder_id
                 order = Order.objects.filter(id=order_id).first()
                 order.mydriver = user.name
@@ -426,9 +449,10 @@ def passenger_order(request):
         areas = Area.objects.all().values()
         area_id = [-1, -1]
         area_name = ["", ""]
-        sessionId = SessionId.objects.filter(sessId=sess).only("username").first()
+        sessionId = SessionId.objects.filter(
+            sessId=sess).only("username").first()
         passengername = sessionId.username
-        flag1,flag2=True,True
+        flag1, flag2 = True, True
         for area in areas:
             if(flag1 and check_area(area['border'], origin['latitude'], origin['longitude'])):
                 area_id[0] = area['id']
@@ -437,15 +461,15 @@ def passenger_order(request):
             if(flag2 and check_area(area['border'], dest['latitude'], dest['longitude'])):
                 area_id[1] = area['id']
                 area_name[1] = area['name']
-                flag2=False
+                flag2 = False
             if(not (flag2 or flag1)):
                 break
         if(flag1 or flag1):
             return JsonResponse({'errcode': 0, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
-                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单                          
-        if(Passenger.objects.filter(name=passengername).update(myorder_id = order.id,product = product,lon = origin['longitude'],lat = origin['latitude'],status = 1)==0):
-            return JsonResponse({'errcode':-1})
+                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单
+        if(Passenger.objects.filter(name=passengername).update(myorder_id=order.id, product=product, lon=origin['longitude'], lat=origin['latitude'], status=1) == 0):
+            return JsonResponse({'errcode': -1})
         init_match_list(int(area_id[0]), int(product),
                         passengername, 'passenger')
         match(int(area_id[0]), int(product), passengername, 'passenger')
@@ -474,7 +498,7 @@ def passenger_order(request):
         drivername = order.mydriver
         driver = Driver.objects.filter(name=drivername).first()
         if (not driver) or driver.status <= 2 or passenger.status <= 2:
-            return JsonResponse({'errcode': errcode})    
+            return JsonResponse({'errcode': errcode})
         elif order_id in driver_position and driver_position[order_id]['latitude'] and driver_position[order_id]['longitude']:
             return JsonResponse({'errcode': errcode, 'driver': {'latitude': driver_position[order_id]['latitude'], 'longitude': driver_position[order_id]['longitude']}})
         else:
@@ -939,7 +963,8 @@ def give_score(request):
         if not driver:
             return JsonResponse({'errcode': -1})
         score = reqjson['score']
-        driver.score = (driver.score * driver.scorenum + score) / (driver.scorenum + 1)
+        driver.score = (driver.score * driver.scorenum +
+                        score) / (driver.scorenum + 1)
         driver.scorenum += 1
         driver.save()
         return JsonResponse({'errcode': 0})
@@ -983,5 +1008,4 @@ def set_user_info(request):
                 return JsonResponse({'errcode': 0})
             else:
                 logger.info("product:{}".format(product))
-                return HttpResponse("product{}不存在".format(product), status = 405)
-               
+                return HttpResponse("product{}不存在".format(product), status=405)

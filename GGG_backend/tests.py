@@ -462,4 +462,8 @@ class GGG_test(TestCase):
         self.assertEqual(res4.json()['carnum'], "2200")
         self.assertEqual(res4.json()['product'], self.product_id)
 
-
+    def test_pressure(self):
+        res1 = self.client.post('/api/start_pressure_test', data={'num': 101}, content_type="application/json")
+        res2 = self.client.post('/api/end_pressure_test', content_type="application/json")
+        self.assertEqual(res1.json()['errcode'], 0)
+        self.assertEqual(res2.json()['errcode'], 0)
