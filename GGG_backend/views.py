@@ -42,11 +42,13 @@ driver_position = {
 
 def start_pressure_test(request):
     if request.method == 'POST':
+        reqjson = json.loads(request.body)
+        num = reqjson['num']
         i = 0
         pl=[]
         dl=[]
         sl=[]
-        while i < 100:
+        while i < num:
             str1 = 'p'+str(i)
             str2 = 'd'+str(i)
             pl.append(Passenger(name=str1))
