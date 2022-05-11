@@ -353,6 +353,7 @@ def cancel_order(area, product, openid, job):
         if influenced_user.name in driver_matched:
             driver_matched.remove(influenced_user.name)
             driver_unmatched.insert(0, influenced_user.name)
+            match(int(area), int(product), influenced_user.name, "driver")
         if cancel_user.name in passenger_matched:
             passenger_matched.remove(cancel_user.name)
         influenced_user.myorder_id = -1
@@ -375,6 +376,7 @@ def cancel_order(area, product, openid, job):
         if influenced_user.name in passenger_matched:
             passenger_matched.remove(influenced_user.name)
             passenger_unmatched.insert(0, influenced_user.name)
+            match(int(area), int(product), influenced_user.name, "passenger")
         if cancel_user.name in driver_matched:
             driver_matched.remove(cancel_user.name)
         order.status = 0
@@ -465,7 +467,7 @@ def passenger_order(request):
                 flag2 = False
             if(not (flag2 or flag1)):
                 break
-        if(flag1 or flag1):
+        if(flag1 or flag2):
             return JsonResponse({'errcode': 0, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
                                      dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单
