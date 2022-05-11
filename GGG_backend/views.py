@@ -99,7 +99,7 @@ def show_car(request):
             logger.error(e, exc_info=True)
             return JsonResponse({'errcode': -1, 'cars': []})
         available_drivers = []
-        range = Setting.object.all().first().range
+        range = Setting.objects.all().first().range
         for driver_name,position in driver_position.items():
             if Driver.objects.filter(name=driver_name,status=1).exists():
                 driver_lat = float(position['latitude'])
