@@ -76,6 +76,7 @@ class Product(models.Model):
 
 class Setting(models.Model):
     products = models.CharField(max_length=1000, default='') # "1,2,3"
+    range = models.FloatField(default=10, blank=True)
 
 class Area(models.Model):
     name = models.CharField(max_length=100, default="")

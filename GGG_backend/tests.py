@@ -133,10 +133,6 @@ class GGG_test(TestCase):
         driver = Driver.objects.filter(name='ashuai').first()
         status = driver.status
         self.assertEqual(status, 1)
-        driver_lat = driver.lat
-        driver_lon = driver.lon
-        self.assertEqual(driver_lat, decimal.Decimal('39.935119'))
-        self.assertEqual(driver_lon, decimal.Decimal('116.423963'))
         code = response.json()['errcode']
         self.assertEqual(code, 0)
         # 司机轮询
@@ -348,10 +344,6 @@ class GGG_test(TestCase):
         driver = Driver.objects.filter(name='ashuai').first()
         status = driver.status
         self.assertEqual(status, 2)
-        driver_lat = driver.lat
-        driver_lon = driver.lon
-        self.assertEqual(driver_lat, decimal.Decimal('39.935119'))
-        self.assertEqual(driver_lon, decimal.Decimal('116.423963'))
         code = response.json()['errcode']
         self.assertEqual(code, 0)
         # 司机轮询
@@ -404,10 +396,6 @@ class GGG_test(TestCase):
         driver = Driver.objects.filter(name='ashuai').first()
         status = driver.status
         self.assertEqual(status, 2)
-        driver_lat = driver.lat
-        driver_lon = driver.lon
-        self.assertEqual(driver_lat, decimal.Decimal('39.935119'))
-        self.assertEqual(driver_lon, decimal.Decimal('116.423963'))
         code = response.json()['errcode']
         self.assertEqual(code, 0)
         # 司机轮询

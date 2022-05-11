@@ -46,20 +46,20 @@ def start_pressure_test(request):
         reqjson = json.loads(request.body)
         num = reqjson['num']
         i = 0
-        pl = []
-        dl = []
-        sl = []
+        passenger_list = []
+        driver_list = []
+        session_list = []
         while i < num:
             str1 = 'p'+str(i)
             str2 = 'd'+str(i)
-            pl.append(Passenger(name=str1))
-            dl.append(Driver(name=str2, product=1))
-            sl.append(SessionId(sessId=str1, username=str1, job="passenger"))
-            sl.append(SessionId(sessId=str2, username=str2, job="driver"))
+            passenger_list.append(Passenger(name=str1))
+            driver_list.append(Driver(name=str2, product=1))
+            session_list.append(SessionId(sessId=str1, username=str1, job="passenger"))
+            session_list.append(SessionId(sessId=str2, username=str2, job="driver"))
             i = i + 1
-        Passenger.objects.bulk_create(pl)
-        Driver.objects.bulk_create(dl)
-        SessionId.objects.bulk_create(sl)
+        Passenger.objects.bulk_create(passenger_list)
+        Driver.objects.bulk_create(driver_list)
+        SessionId.objects.bulk_create(session_list)
 
         return JsonResponse({'errcode': 0})
 
@@ -99,13 +99,14 @@ def show_car(request):
             logger.error(e, exc_info=True)
             return JsonResponse({'errcode': -1, 'cars': []})
         available_drivers = []
-        drivers = Driver.objects.all()
-        for driver in drivers:
-            if driver.status == 1:
-                driver_lat = float(driver.lat)
-                driver_lon = float(driver.lon)
-                if (((111 * (float(latitude) - driver_lat)) ** 2 + (111 * math.cos(float(latitude) / (180 * 3.14159)) * (float(longitude) - driver_lon)) ** 2) < 10):
-                    available_drivers.append((driver.lat, driver.lon))
+        range = Setting.object.all().first().range
+        for driver_name,position in driver_position.items():
+            if Driver.objects.filter(name=driver_name,status=1).exists():
+                driver_lat = float(position['latitude'])
+                driver_lon = float(position['longitude'])
+                if (((111 * (float(latitude) - driver_lat)) ** 2 + (111 * math.cos(float(latitude) / (180 * 3.14159)) * (float(longitude) - driver_lon)) ** 2) < range):
+                    available_drivers.append(
+                        {'latitude': driver_lat, 'longitude': driver_lon})
         return JsonResponse({'errcode': 0, 'cars': available_drivers})
 
 
@@ -392,10 +393,10 @@ def get_passenger_path(order):
     passenger = Passenger.objects.filter(name=order.mypassenger).first()
     driver = Driver.objects.filter(name=order.mydriver).first()
     response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
-                            '&origin='+str(driver.lon)+','+str(driver.lat)+'&destination='+str(passenger.lon)+','+str(passenger.lat)+'&show_fields=polyline')
+                            '&origin='+str(driver_position[order.mydriver]['longitude'])+','+str(driver_position[order.mydriver]['latitude'])+'&destination='+str(passenger.lon)+','+str(passenger.lat)+'&show_fields=polyline')
     response = response.json()
     if(response['infocode'] != '10000'):
-        path = [{"longitude": float(driver.lon), "latitude": float(driver.lat)},
+        path = [{"longitude": float(driver_position[order.mydriver].longitude), "latitude": float(driver_position[order.mydriver].latitude)},
                 {"longitude": float(passenger.lon), "latitude": float(passenger.lat)}]
         return path
     polylines = [match.value for match in parse(
@@ -499,8 +500,8 @@ def passenger_order(request):
         driver = Driver.objects.filter(name=drivername).first()
         if (not driver) or driver.status <= 2 or passenger.status <= 2:
             return JsonResponse({'errcode': errcode})
-        elif order_id in driver_position and driver_position[order_id]['latitude'] and driver_position[order_id]['longitude']:
-            return JsonResponse({'errcode': errcode, 'driver': {'latitude': driver_position[order_id]['latitude'], 'longitude': driver_position[order_id]['longitude']}})
+        elif order.mydriver in driver_position and driver_position[order.mydriver]['latitude'] and driver_position[order.mydriver]['longitude']:
+            return JsonResponse({'errcode': errcode, 'driver': {'latitude': driver_position[order.mydriver]['latitude'], 'longitude': driver_position[order.mydriver]['longitude']}})
         else:
             return JsonResponse({'errcode': errcode})  # ????
 
@@ -655,9 +656,6 @@ def driver_order(request):
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         if driver.status == 0:  # 0代表没有订单
             errcode = 0
-            driver.lat = origin['latitude']
-            driver.lon = origin['longitude']
-            driver.save()
             for area in areas:
                 if (check_area(area['border'], origin_latitude, origin_longitude)):
                     area_id = area['id']
@@ -687,13 +685,12 @@ def driver_order(request):
             errcode = -10
             return JsonResponse({'errcode': errcode, 'order': orderid, 'dest': destination})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
+        driver_position[driver.name] = {
+                    'latitude': latitude, 'longitude': longitude}
         if driver.status != 0 and driver.status != 1:  # 状态不是0或者1表明有订单，要么是unactive要么是在待匹配池子里
             errcode = 0
             orderid = driver.myorder_id
             order = Order.objects.filter(id=orderid).first()
-            if driver.status >= 3:
-                driver_position[orderid] = {
-                    'latitude': latitude, 'longitude': longitude}
             origin = {'name': order.origin_name,
                       'latitude': order.origin_lat, 'longitude': order.origin_lon}
             destination = {'name': order.dest_name,
@@ -731,7 +728,7 @@ def driver_get_order(request):
             order.distance = distance
             order.save()
             position = reqjson['position']
-            driver_position[orderid] = position
+            driver_position[user.username] = position
             return JsonResponse({'errcode': 0, 'info': info, 'passenger_path': passenger_path})
         except Exception as e:
             logger.error(e, exc_info=True)
