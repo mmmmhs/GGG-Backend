@@ -161,6 +161,9 @@ class GGG_test(TestCase):
         # 司机轮询2
         response = self.client.get(
             '/api/driver_order', data={'sess': "963", 'latitude': '39.935120', 'longitude': '116.423973'})
+        # 测试司机图标展示
+        response = self.client.get(
+            '/api/show_car', data={'sess': "369", 'latitude': '39.935120', 'longitude': '116.423973'})
         # 乘客轮询
         order = Order.objects.filter(mypassenger='arui').first()
         order_id = order.id
