@@ -241,6 +241,7 @@ def check_area(border, lat, lng):
 
 
 def init_match_list(area, product, name, job):
+    mlogger.info("init_match_list %s %s %s %s %s ",area,product,name,job,match_list)
     if not area in match_list:
         match_list[area] = {}
     if not product in match_list[area]:
@@ -256,6 +257,7 @@ def init_match_list(area, product, name, job):
 
 
 def match(area, product, openid, job):
+    mlogger.info("match %s %s %s %s %s ",area,product,openid,job,match_list)
     try:
         driver_unmatched = match_list[area][product]['driver_unmatched']
         driver_matched = match_list[area][product]['driver_matched']
@@ -824,7 +826,7 @@ def passenger_cancel(request):
             if passenger.myorder_id != -1:
                 order = Order.objects.filter(id=passenger.myorder_id).first()
                 if not order:
-                    raise Exception('订单{}不存在'.format(passenger.myorder_id))
+                    raise Exception('{}'.format(passenger.myorder_id))
                 cancel_order(int(order.area), int(passenger.product),
                              user.username, "passenger")
             else:
