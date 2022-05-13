@@ -377,17 +377,16 @@ def cancel_order(area, product, openid, job):
             cancel_user.status = 0
             cancel_user.save()
             return
-        influenced_user = Passenger.objects.filter(
-            name=order.mypassenger).first()
-        if influenced_user.name in passenger_matched:
-            passenger_matched.remove(influenced_user.name)
-            passenger_unmatched.insert(0, influenced_user.name)
-            match(int(area), int(product), influenced_user.name, "passenger")
         if cancel_user.name in driver_matched:
             driver_matched.remove(cancel_user.name)
         order.status = 0
         order.mydriver = ""
         order.save()
+        influenced_user = Passenger.objects.filter(name=order.mypassenger).first()
+        if influenced_user.name in passenger_matched:
+            passenger_matched.remove(influenced_user.name)
+            passenger_unmatched.insert(0, influenced_user.name)
+            match(int(area), int(product), influenced_user.name, "passenger")
     cancel_user.status = 0
     cancel_user.save()
     influenced_user.status = 1
@@ -824,6 +823,18 @@ def passenger_cancel(request):
             passenger = Passenger.objects.filter(name=user.username).first()
             if not passenger:
                 return JsonResponse({'errcode': -1})
+            if area == -1:
+                areas = Area.objects.all().values()
+                if passenger.status == 1:
+                    for a in areas:
+                        if passenger.name in match_list[int(a['id'])][int(passenger.product)]['passenger_unmatched']:
+                            area = a
+                            break
+                if passenger.status == 2:
+                    for a in areas:
+                        if passenger.name in match_list[int(a['id'])][int(passenger.product)]['passenger_matched']:
+                            area = a
+                            break 
             cancel_order(int(area), int(passenger.product), user.username, "passenger")
             return JsonResponse({'errcode': 0})
         except Exception as e:
@@ -843,6 +854,18 @@ def driver_cancel(request):
             driver = Driver.objects.filter(name=user.username).first()
             if not driver:
                 return JsonResponse({'errcode': -1})
+            if area == -1:
+                areas = Area.objects.all().values()
+                if driver.status == 1:
+                    for a in areas:
+                        if driver.name in match_list[int(a['id'])][int(driver.product)]['driver_unmatched']:
+                            area = a
+                            break
+                if driver.status == 2 or driver.status == 3:
+                    for a in areas:
+                        if driver.name in match_list[int(a['id'])][int(driver.product)]['driver_matched']:
+                            area = a
+                            break
             cancel_order(int(area), int(driver.product), user.username, "driver")
             return JsonResponse({'errcode': 0})
         except Exception as e:
