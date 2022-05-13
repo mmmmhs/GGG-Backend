@@ -394,7 +394,6 @@ def cancel_order(area, product, openid, job):
 # 获取接乘客行程路径 返回path
 def get_passenger_path(order):
     passenger = Passenger.objects.filter(name=order.mypassenger).first()
-    driver = Driver.objects.filter(name=order.mydriver).first()
     response = requests.get('https://restapi.amap.com/v5/direction/driving?key='+secoder.settings.GOD_KEY +
                             '&origin='+str(driver_position[order.mydriver]['longitude'])+','+str(driver_position[order.mydriver]['latitude'])+'&destination='+str(passenger.lon)+','+str(passenger.lat)+'&show_fields=polyline')
     response = response.json()
@@ -449,7 +448,7 @@ def passenger_order(request):
         sess = reqjson['sess']
         origin = reqjson['origin']
         dest = reqjson['dest']  # name latitude longitude
-        product = reqjson['product']
+        product_id = reqjson['product']
         areas = Area.objects.all().values()
         area_id = [-1, -1]
         area_name = ["", ""]
@@ -471,12 +470,18 @@ def passenger_order(request):
         if(flag1 or flag2):
             return JsonResponse({'errcode': 0, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
-                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product, area=area_id[0])  # 创建订单
-        if(Passenger.objects.filter(name=passengername).update(myorder_id=order.id, product=product, lon=origin['longitude'], lat=origin['latitude'], status=1) == 0):
+                                     dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product_id, area=area_id[0])  # 创建订单
+        product = Product.objects.filter(id = product_id).first()
+        order_path,distance = get_order_path(order)
+        order.money = distance * product.price_per_meter
+        order.order_path = json.dumps(order_path)
+        order.distance = distance
+        order.save()
+        if(Passenger.objects.filter(name=passengername).update(myorder_id=order.id, product=product_id, lon=origin['longitude'], lat=origin['latitude'], status=1) == 0):
             return JsonResponse({'errcode': -1})
-        init_match_list(int(area_id[0]), int(product),
+        init_match_list(int(area_id[0]), int(product_id),
                         passengername, 'passenger')
-        match(int(area_id[0]), int(product), passengername, 'passenger')
+        match(int(area_id[0]), int(product_id), passengername, 'passenger')
         return JsonResponse({'errcode': 0, 'order': order.id, 'area': area_id, 'info': area_name})
 
     elif(request.method == 'GET'):  # 乘客询问订单状态
@@ -524,13 +529,9 @@ def get_order_info(request):  # 乘客获取当前订单信息
     drivername = order.mydriver
     driver_info = drivername[-5:]  # 司机前五位
     passenger_info = order.mypassenger[-5:]  # 乘客前五位
-    product = Product.objects.filter(id=order.product).first()
-    distance = order.distance
     order_path = json.loads(order.order_path)
     passenger_path = json.loads(order.passenger_path)
-    money = distance * product.price_per_meter
-    order.money = money
-    order.save()
+    money = order.money
     origin = {'name': order.origin_name,
               'latitude': order.origin_lat, 'longitude': order.origin_lon}
     dest = {'name': order.dest_name,
@@ -726,9 +727,6 @@ def driver_get_order(request):
             driver.save()
             passenger_path = get_passenger_path(order)
             order.passenger_path = json.dumps(passenger_path)
-            order_path, distance = get_order_path(order)
-            order.order_path = json.dumps(order_path)
-            order.distance = distance
             order.save()
             position = reqjson['position']
             driver_position[user.username] = position
