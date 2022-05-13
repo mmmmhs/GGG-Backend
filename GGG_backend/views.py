@@ -38,7 +38,7 @@ match_list = {}
 # openid
 """
 driver_position = {
-}  # 键是order的id，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
+}  # 键是司机名字，值是司机的实时位置(position是一个字典，{'latitude': xxx, 'longitude':xxx})
 
 
 def start_pressure_test(request):
@@ -864,6 +864,8 @@ def driver_cancel(request):
             driver = Driver.objects.filter(name=user.username).first()
             if not driver:
                 return JsonResponse({'errcode': -1})
+            if driver.name in driver_position:
+                del driver_position[driver.name]
             if area == -1:
                 areas = Area.objects.all().values()
                 if driver.status == 1:
@@ -987,6 +989,8 @@ def give_score(request):
         driver = Driver.objects.filter(name=order.mydriver).first()
         if not driver:
             return JsonResponse({'errcode': -1})
+        if driver.name in driver_position:
+            del driver_position[driver.name]
         score = reqjson['score']
         driver.score = (driver.score * driver.scorenum +
                         score) / (driver.scorenum + 1)
