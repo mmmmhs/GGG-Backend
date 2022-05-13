@@ -357,6 +357,8 @@ def cancel_order(area, product, openid, job):
                 order.delete()
             return
         influenced_user = Driver.objects.filter(name=order.mydriver).first()
+        influenced_user.status = 1
+        influenced_user.save()
         if influenced_user.name in driver_matched:
             driver_matched.remove(influenced_user.name)
             driver_unmatched.insert(0, influenced_user.name)
@@ -383,14 +385,15 @@ def cancel_order(area, product, openid, job):
         order.mydriver = ""
         order.save()
         influenced_user = Passenger.objects.filter(name=order.mypassenger).first()
+        influenced_user.status = 1
+        influenced_user.save()
         if influenced_user.name in passenger_matched:
             passenger_matched.remove(influenced_user.name)
             passenger_unmatched.insert(0, influenced_user.name)
             match(int(area), int(product), influenced_user.name, "passenger")
     cancel_user.status = 0
     cancel_user.save()
-    influenced_user.status = 1
-    influenced_user.save()
+    
 
 
 # 访问高德地图接口
