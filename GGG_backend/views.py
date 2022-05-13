@@ -833,12 +833,12 @@ def passenger_cancel(request):
                 if passenger.status == 1:
                     for a in areas:
                         if int(a['id']) in match_list and int(passenger.product) in match_list[int(a['id'])] and passenger.name in match_list[int(a['id'])][int(passenger.product)]['passenger_unmatched']:
-                            area = a
+                            area = a['id']
                             break
                 if passenger.status == 2:
                     for a in areas:
                         if int(a['id']) in match_list and int(passenger.product) in match_list[int(a['id'])] and passenger.name in match_list[int(a['id'])][int(passenger.product)]['passenger_matched']:
-                            area = a
+                            area = a['id']
                             break
             if area == -1:
                 passenger.status = 0
@@ -869,12 +869,12 @@ def driver_cancel(request):
                 if driver.status == 1:
                     for a in areas:
                         if int(a['id']) in match_list and int(driver.product) in match_list[int(a['id'])] and driver.name in match_list[int(a['id'])][int(driver.product)]['driver_unmatched']:
-                            area = a
+                            area = a['id']
                             break
                 if driver.status == 2 or driver.status == 3:
                     for a in areas:
                         if int(a['id']) in match_list and int(driver.product) in match_list[int(a['id'])] and driver.name in match_list[int(a['id'])][int(driver.product)]['driver_matched']:
-                            area = a
+                            area = a['id']
                             break
             if area == -1:
                 driver.status = 0
