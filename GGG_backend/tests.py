@@ -11,6 +11,7 @@ class GGG_test(TestCase):
     setting_id = 0
     product_id = 0
     product_id2 = 0
+    area_id = 0
 
     def setUp(self):
         # 以下用于测试注册
@@ -37,9 +38,9 @@ class GGG_test(TestCase):
         self.product_id = p1.id
         self.product_id2 = p2.id
 
-        Area.objects.create(
+        a = Area.objects.create(
             name="枝江", border='[{"lat": 0, "lng": 0}, {"lat": 0, "lng": 1000}, {"lat": 1000, "lng": 1000}, {"lat": 1000, "lng": 0}]')
-
+        self.area_id = a.id
         _str = str(p1.id) + ',' + str(p2.id) + ',' + str(p3.id)
         s1 = Setting.objects.create(products=_str)
         print(s1.id)
@@ -358,7 +359,7 @@ class GGG_test(TestCase):
         order_status = order.status
         self.assertEqual(order_status, 1)
         res = self.client.post(
-            "/api/passenger_cancel", data={'sess': "369", 'order': order.id}, content_type="application/json")
+            "/api/passenger_cancel", data={'sess': "369", 'area': self.area_id}, content_type="application/json")
         passenger = Passenger.objects.filter(name=user.username).first()
         driver = Driver.objects.filter(name='ashuai').first()
         self.assertEqual(passenger.status, 0)
@@ -410,7 +411,7 @@ class GGG_test(TestCase):
         order_status = order.status
         self.assertEqual(order_status, 1)
         res = self.client.post(
-            "/api/driver_cancel", data={'sess': "963", 'order': order.id}, content_type="application/json")
+            "/api/driver_cancel", data={'sess': "963", 'area': self.area_id}, content_type="application/json")
         passenger = Passenger.objects.filter(name=user.username).first()
         driver = Driver.objects.filter(name='ashuai').first()
         self.assertEqual(passenger.status, 1)
