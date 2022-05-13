@@ -843,7 +843,7 @@ def passenger_cancel(request):
             if area == -1:
                 passenger.status = 0
                 passenger.save()
-                return JsonResponse({'errcode': -1})
+                return JsonResponse({'errcode': 0})
             cancel_order(int(area), int(passenger.product),
                          user.username, "passenger")
             return JsonResponse({'errcode': 0})
@@ -879,7 +879,7 @@ def driver_cancel(request):
             if area == -1:
                 driver.status = 0
                 driver.save()
-                return JsonResponse({'errcode': -1})
+                return JsonResponse({'errcode': 0})
             cancel_order(int(area), int(driver.product),
                          user.username, "driver")
             return JsonResponse({'errcode': 0})
