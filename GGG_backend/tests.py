@@ -192,7 +192,7 @@ class GGG_test(TestCase):
         money = response.json()['money']
         self.assertEqual(code, 3)
         self.assertEqual(passenger, 'arui')
-        self.assertEqual(money, 1554390)
+        self.assertEqual(money, 1554395)
         # 司机确认乘客上车
         order = Order.objects.filter(mypassenger='arui').first()
         order_id = order.id

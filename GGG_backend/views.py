@@ -480,7 +480,7 @@ def passenger_order(request):
                                      dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product_id, area=area_id[0])  # 创建订单
         product = Product.objects.filter(id=product_id).first()
         order_path, distance = get_order_path(order)
-        order.money = distance * product.price_per_meter
+        order.money = distance * product.price_per_meter + 5 # 起步价
         order.order_path = json.dumps(order_path)
         order.distance = distance
         order.save()
