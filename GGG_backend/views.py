@@ -54,8 +54,10 @@ def start_pressure_test(request):
             str2 = 'd'+str(i)
             passenger_list.append(Passenger(name=str1))
             driver_list.append(Driver(name=str2, product=1))
-            session_list.append(SessionId(sessId=str1, username=str1, job="passenger"))
-            session_list.append(SessionId(sessId=str2, username=str2, job="driver"))
+            session_list.append(
+                SessionId(sessId=str1, username=str1, job="passenger"))
+            session_list.append(
+                SessionId(sessId=str2, username=str2, job="driver"))
             i = i + 1
         Passenger.objects.bulk_create(passenger_list)
         Driver.objects.bulk_create(driver_list)
@@ -100,8 +102,8 @@ def show_car(request):
             return JsonResponse({'errcode': -1, 'cars': []})
         available_drivers = []
         range = Setting.objects.all().first().range
-        for driver_name,position in driver_position.items():
-            if Driver.objects.filter(name=driver_name,status=1).exists():
+        for driver_name, position in driver_position.items():
+            if Driver.objects.filter(name=driver_name, status=1).exists():
                 driver_lat = float(position['latitude'])
                 driver_lon = float(position['longitude'])
                 if (((111 * (float(latitude) - driver_lat)) ** 2 + (111 * math.cos(float(latitude) / (180 * 3.14159)) * (float(longitude) - driver_lon)) ** 2) < range):
@@ -241,7 +243,8 @@ def check_area(border, lat, lng):
 
 
 def init_match_list(area, product, name, job):
-    mlogger.info("init_match_list %s %s %s %s %s ",area,product,name,job,match_list)
+    mlogger.info("init_match_list %s %s %s %s %s ",
+                 area, product, name, job, match_list)
     if not area in match_list:
         match_list[area] = {}
     if not product in match_list[area]:
@@ -257,7 +260,8 @@ def init_match_list(area, product, name, job):
 
 
 def match(area, product, openid, job):
-    mlogger.info("match %s %s %s %s %s ",area,product,openid,job,match_list)
+    mlogger.info("match %s %s %s %s %s ", area,
+                 product, openid, job, match_list)
     try:
         driver_unmatched = match_list[area][product]['driver_unmatched']
         driver_matched = match_list[area][product]['driver_matched']
@@ -373,7 +377,8 @@ def cancel_order(area, product, openid, job):
             cancel_user.status = 0
             cancel_user.save()
             return
-        influenced_user = Passenger.objects.filter(name=order.mypassenger).first()
+        influenced_user = Passenger.objects.filter(
+            name=order.mypassenger).first()
         if influenced_user.name in passenger_matched:
             passenger_matched.remove(influenced_user.name)
             passenger_unmatched.insert(0, influenced_user.name)
@@ -465,22 +470,21 @@ def passenger_order(request):
                 area_id[1] = area['id']
                 area_name[1] = area['name']
                 flag2 = False
-            if(not (flag2 or flag1)):
+            if(not (flag1 or flag2)):
                 break
         if(flag1 or flag2):
             return JsonResponse({'errcode': 0, 'area': area_id, 'info': area_name})
         order = Order.objects.create(mypassenger=passengername, origin_name=origin['name'], origin_lat=origin['latitude'], origin_lon=origin['longitude'], dest_name=dest['name'],
                                      dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product_id, area=area_id[0])  # 创建订单
-        product = Product.objects.filter(id = product_id).first()
-        order_path,distance = get_order_path(order)
+        product = Product.objects.filter(id=product_id).first()
+        order_path, distance = get_order_path(order)
         order.money = distance * product.price_per_meter
         order.order_path = json.dumps(order_path)
         order.distance = distance
         order.save()
         if(Passenger.objects.filter(name=passengername).update(myorder_id=order.id, product=product_id, lon=origin['longitude'], lat=origin['latitude'], status=1) == 0):
             return JsonResponse({'errcode': -1})
-        init_match_list(int(area_id[0]), int(product_id),
-                        passengername, 'passenger')
+        init_match_list(int(area_id[0]), int(product_id), passengername, 'passenger')
         match(int(area_id[0]), int(product_id), passengername, 'passenger')
         return JsonResponse({'errcode': 0, 'order': order.id, 'area': area_id, 'info': area_name})
 
@@ -690,7 +694,7 @@ def driver_order(request):
             return JsonResponse({'errcode': errcode, 'order': orderid, 'dest': destination})
         driver = Driver.objects.filter(name=user.username).first()  # 找到对应的司机
         driver_position[driver.name] = {
-                    'latitude': latitude, 'longitude': longitude}
+            'latitude': latitude, 'longitude': longitude}
         if driver.status != 0 and driver.status != 1:  # 状态不是0或者1表明有订单，要么是unactive要么是在待匹配池子里
             errcode = 0
             orderid = driver.myorder_id
@@ -754,8 +758,7 @@ def driver_confirm_aboard(request):
             if not order:
                 return JsonResponse({'errcode': -1, 'order_path': [], 'time': 0})
                 # order存在
-            passenger = Passenger.objects.filter(
-                name=order.mypassenger).first()
+            passenger = Passenger.objects.filter(name=order.mypassenger).first()
             if not passenger:
                 return JsonResponse({'errcode': -1, 'order_path': [], 'time': 0})
                 # order存储passenger存在
@@ -813,6 +816,7 @@ def passenger_cancel(request):
         try:
             reqjson = json.loads(request.body)
             sess = reqjson['sess']
+            area = reqjson['area']
             user = SessionId.objects.filter(sessId=sess).first()
             if not user or user.job != 'passenger':
                 return JsonResponse({'errcode': -1})
@@ -820,15 +824,7 @@ def passenger_cancel(request):
             passenger = Passenger.objects.filter(name=user.username).first()
             if not passenger:
                 return JsonResponse({'errcode': -1})
-            if passenger.myorder_id != -1:
-                order = Order.objects.filter(id=passenger.myorder_id).first()
-                if not order:
-                    raise Exception('{}'.format(passenger.myorder_id))
-                cancel_order(int(order.area), int(passenger.product),
-                             user.username, "passenger")
-            else:
-                passenger.status = 0
-                passenger.save()
+            cancel_order(int(area), int(passenger.product), user.username, "passenger")
             return JsonResponse({'errcode': 0})
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -840,21 +836,14 @@ def driver_cancel(request):
         try:
             reqjson = json.loads(request.body)
             sess = reqjson['sess']
+            area = reqjson['area']
             user = SessionId.objects.filter(sessId=sess).first()
             if not user or user.job != 'driver':
                 return JsonResponse({'errcode': -1})
             driver = Driver.objects.filter(name=user.username).first()
             if not driver:
                 return JsonResponse({'errcode': -1})
-            if driver.myorder_id != -1:
-                order = Order.objects.filter(id=driver.myorder_id).first()
-                if not order:
-                    raise Exception('订单{}不存在'.format(driver.myorder_id))
-                cancel_order(int(order.area), int(driver.product),
-                             user.username, "driver")
-            else:
-                driver.status = 0
-                driver.save()
+            cancel_order(int(area), int(driver.product), user.username, "driver")
             return JsonResponse({'errcode': 0})
         except Exception as e:
             logger.error(e, exc_info=True)
