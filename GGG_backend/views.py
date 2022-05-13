@@ -384,7 +384,8 @@ def cancel_order(area, product, openid, job):
         order.status = 0
         order.mydriver = ""
         order.save()
-        influenced_user = Passenger.objects.filter(name=order.mypassenger).first()
+        influenced_user = Passenger.objects.filter(
+            name=order.mypassenger).first()
         influenced_user.status = 1
         influenced_user.save()
         if influenced_user.name in passenger_matched:
@@ -393,7 +394,6 @@ def cancel_order(area, product, openid, job):
             match(int(area), int(product), influenced_user.name, "passenger")
     cancel_user.status = 0
     cancel_user.save()
-    
 
 
 # 访问高德地图接口
@@ -480,13 +480,14 @@ def passenger_order(request):
                                      dest_lat=dest['latitude'], dest_lon=dest['longitude'], start_time=time.time(), product=product_id, area=area_id[0])  # 创建订单
         product = Product.objects.filter(id=product_id).first()
         order_path, distance = get_order_path(order)
-        order.money = distance * product.price_per_meter + 5 # 起步价
+        order.money = distance * product.price_per_meter + 5  # 起步价
         order.order_path = json.dumps(order_path)
         order.distance = distance
         order.save()
         if(Passenger.objects.filter(name=passengername).update(myorder_id=order.id, product=product_id, lon=origin['longitude'], lat=origin['latitude'], status=1) == 0):
             return JsonResponse({'errcode': -1})
-        init_match_list(int(area_id[0]), int(product_id), passengername, 'passenger')
+        init_match_list(int(area_id[0]), int(
+            product_id), passengername, 'passenger')
         match(int(area_id[0]), int(product_id), passengername, 'passenger')
         return JsonResponse({'errcode': 0, 'order': order.id, 'area': area_id, 'info': area_name})
 
@@ -760,7 +761,8 @@ def driver_confirm_aboard(request):
             if not order:
                 return JsonResponse({'errcode': -1, 'order_path': [], 'time': 0})
                 # order存在
-            passenger = Passenger.objects.filter(name=order.mypassenger).first()
+            passenger = Passenger.objects.filter(
+                name=order.mypassenger).first()
             if not passenger:
                 return JsonResponse({'errcode': -1, 'order_path': [], 'time': 0})
                 # order存储passenger存在
@@ -830,15 +832,16 @@ def passenger_cancel(request):
                 areas = Area.objects.all().values()
                 if passenger.status == 1:
                     for a in areas:
-                        if passenger.name in match_list[int(a['id'])][int(passenger.product)]['passenger_unmatched']:
+                        if int(a['id']) in match_list and int(passenger.product) in match_list[int(a['id'])] and passenger.name in match_list[int(a['id'])][int(passenger.product)]['passenger_unmatched']:
                             area = a
                             break
                 if passenger.status == 2:
                     for a in areas:
-                        if passenger.name in match_list[int(a['id'])][int(passenger.product)]['passenger_matched']:
+                        if int(a['id']) in match_list and int(passenger.product) in match_list[int(a['id'])] and passenger.name in match_list[int(a['id'])][int(passenger.product)]['passenger_matched']:
                             area = a
-                            break 
-            cancel_order(int(area), int(passenger.product), user.username, "passenger")
+                            break
+            cancel_order(int(area), int(passenger.product),
+                         user.username, "passenger")
             return JsonResponse({'errcode': 0})
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -861,15 +864,16 @@ def driver_cancel(request):
                 areas = Area.objects.all().values()
                 if driver.status == 1:
                     for a in areas:
-                        if driver.name in match_list[int(a['id'])][int(driver.product)]['driver_unmatched']:
+                        if int(a['id']) in match_list and int(driver.product) in match_list[int(a['id'])] and driver.name in match_list[int(a['id'])][int(driver.product)]['driver_unmatched']:
                             area = a
                             break
                 if driver.status == 2 or driver.status == 3:
                     for a in areas:
-                        if driver.name in match_list[int(a['id'])][int(driver.product)]['driver_matched']:
+                        if int(a['id']) in match_list and int(driver.product) in match_list[int(a['id'])] and driver.name in match_list[int(a['id'])][int(driver.product)]['driver_matched']:
                             area = a
                             break
-            cancel_order(int(area), int(driver.product), user.username, "driver")
+            cancel_order(int(area), int(driver.product),
+                         user.username, "driver")
             return JsonResponse({'errcode': 0})
         except Exception as e:
             logger.error(e, exc_info=True)
