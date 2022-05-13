@@ -840,6 +840,10 @@ def passenger_cancel(request):
                         if int(a['id']) in match_list and int(passenger.product) in match_list[int(a['id'])] and passenger.name in match_list[int(a['id'])][int(passenger.product)]['passenger_matched']:
                             area = a
                             break
+            if area == -1:
+                passenger.status = 0
+                passenger.save()
+                return JsonResponse({'errcode': -1})
             cancel_order(int(area), int(passenger.product),
                          user.username, "passenger")
             return JsonResponse({'errcode': 0})
@@ -872,6 +876,10 @@ def driver_cancel(request):
                         if int(a['id']) in match_list and int(driver.product) in match_list[int(a['id'])] and driver.name in match_list[int(a['id'])][int(driver.product)]['driver_matched']:
                             area = a
                             break
+            if area == -1:
+                driver.status = 0
+                driver.save()
+                return JsonResponse({'errcode': -1})
             cancel_order(int(area), int(driver.product),
                          user.username, "driver")
             return JsonResponse({'errcode': 0})
