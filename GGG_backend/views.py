@@ -358,6 +358,7 @@ def cancel_order(area, product, openid, job):
             return
         influenced_user = Driver.objects.filter(name=order.mydriver).first()
         influenced_user.status = 1
+        influenced_user.myorder_id = -1
         influenced_user.save()
         if influenced_user.name in driver_matched:
             driver_matched.remove(influenced_user.name)
@@ -367,7 +368,6 @@ def cancel_order(area, product, openid, job):
             passenger_matched.remove(cancel_user.name)
         if order:
             order.delete()
-        influenced_user.myorder_id = -1
     elif job == "driver":
         cancel_user = Driver.objects.filter(name=openid).first()
         if cancel_user.name in driver_unmatched:
