@@ -74,6 +74,9 @@ def end_pressure_test(request):
         Driver.objects.all().delete()
         Order.objects.all().delete()
         SessionId.objects.all().delete()
+        global match_list, driver_position
+        match_list={}
+        driver_position={}
     return JsonResponse({'errcode': 0})
 
 
