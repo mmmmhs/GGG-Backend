@@ -30,3 +30,5 @@ staticfiles
 static_dic/admin/
 *.log
 config/
+htmlcov/
+login/
